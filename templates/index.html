@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Фармацевтичний реєстр</title>
+</head>
+<body>
+    <h2>Пошук лікарських засобів</h2>
+    <form method="post">
+        <input type="text" name="name" placeholder="Назва препарату"><br><br>
+
+        <label>Форма випуску:</label>
+        <select name="form">
+            <option value="">Усі</option>
+            {% for f in forms %}
+                <option value="{{ f }}">{{ f }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <label>МНН:</label>
+        <select name="inn">
+            <option value="">Усі</option>
+            {% for i in inns %}
+                <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <button type="submit">Пошук</button>
+    </form>
+
+    {% if data %}
+        <h3>Результати:</h3>
+        <table border="1">
+            <tr>
+                <th>Назва</th>
+                <th>МНН</th>
+                <th>Форма</th>
+            </tr>
+            {% for row in data %}
+            <tr>
+                <td>{{ row["Торгівельне найменування"] }}</td>
+                <td>{{ row["Міжнародне непатентоване найменування"] }}</td>
+                <td>{{ row["Форма випуску"] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>Виконай пошук, щоб побачити результати.</p>
+    {% endif %}
+</body>
+</html>
