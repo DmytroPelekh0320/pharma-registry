@@ -47,5 +47,18 @@
     {% else %}
         <p>Виконай пошук, щоб побачити результати.</p>
     {% endif %}
+    {% if not guest %}
+    <form action="{{ url_for('save_results') }}" method="post">
+        <input type="hidden" name="results" value='{{ data | tojson }}'>
+        <button type="submit">Зберегти результати</button>
+    </form>
+{% else %}
+    <button disabled>Зберегти результати (доступно після входу)</button>
+{% endif %}
+{% if not guest %}
+    <a href="{{ url_for('history') }}">Переглянути історію</a>
+{% endif %}
+
+
 </body>
 </html>

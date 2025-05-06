@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Історія запитів</title>
+</head>
+<body>
+    <h2>Історія ваших запитів</h2>
+
+    {% if records %}
+        <table border="1" cellpadding="8">
+            <thead>
+                <tr>
+                    <th>Дата та час</th>
+                    <th>Назва</th>
+                    <th>Форма</th>
+                    <th>МНН</th>
+                    <th>Кількість результатів</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in records %}
+                <tr>
+                    <td>{{ row[0] }}</td>
+                    <td>{{ row[1] or '—' }}</td>
+                    <td>{{ row[2] or '—' }}</td>
+                    <td>{{ row[3] or '—' }}</td>
+                    <td>{{ row[4] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>У вас ще немає збережених запитів.</p>
+    {% endif %}
+
+    <br>
+    <a href="{{ url_for('index') }}">⬅ Повернутися до пошуку</a>
+</body>
+</html>

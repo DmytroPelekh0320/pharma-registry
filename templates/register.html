@@ -2,10 +2,10 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Вхід</title>
+    <title>Реєстрація</title>
 </head>
 <body>
-    <h2>Вхід до системи</h2>
+    <h2>Реєстрація нового користувача</h2>
 
     <form method="post">
         <label for="username">Email:</label><br>
@@ -14,15 +14,9 @@
         <label for="password">Пароль:</label><br>
         <input type="password" name="password" required><br><br>
 
-        <button type="submit">Увійти</button>
-    </form>
-
-    <form action="{{ url_for('register') }}">
         <button type="submit">Зареєструватися</button>
     </form>
 
-    <form action="{{ url_for('index') }}">
-        <button type="submit">Продовжити як гість</button>
-    </form>
+    <p>Вже маєш акаунт? <a href="{{ url_for('login') }}">Увійти</a></p>
 </body>
 </html>

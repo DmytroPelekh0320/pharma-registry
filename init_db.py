@@ -14,6 +14,20 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """)
 
+# Створення таблиці історії запитів
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS query_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    timestamp TEXT NOT NULL,
+    name_filter TEXT,
+    form_filter TEXT,
+    inn_filter TEXT,
+    result_count INTEGER,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+)
+""")
+
 # Додавання тестового користувача
 username = "pelekh.d2004@gmail.com"
 password = "admin123"
@@ -27,3 +41,4 @@ except sqlite3.IntegrityError:
 
 conn.commit()
 conn.close()
+print("Ініціалізацію завершено.")
