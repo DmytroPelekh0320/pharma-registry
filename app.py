@@ -4,8 +4,12 @@ from werkzeug.security import check_password_hash
 import sqlite3
 import random
 import os
+import requests
 from datetime import datetime
 import csv
+from flask import make_response
+import json
+from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -123,22 +127,24 @@ def index():
             if inn_filter and row["Міжнародне непатентоване найменування"] != inn_filter:
                 continue
             filtered.append(row)
-    if "user_id" in session and request.method == "POST":
-        conn = sqlite3.connect("users.db")
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO query_history (user_id, timestamp, name_filter, form_filter, inn_filter, result_count)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            session["user_id"],
-            datetime.now().isoformat(),
-            name_filter,
-            form_filter,
-            inn_filter,
-            len(filtered)
-        ))
-        conn.commit()
-        conn.close()
+        if user_authenticated:
+            conn = sqlite3.connect("users.db")
+            cursor = conn.cursor()
+            cursor.execute("""
+        INSERT INTO query_history (
+            user_id, timestamp, name_filter, form_filter, inn_filter, result_count, results_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        session["user_id"],
+        datetime.now().isoformat(),
+        name_filter or None,
+        form_filter or None,
+        inn_filter or None,
+        len(filtered),
+        json.dumps(filtered, ensure_ascii=False)
+    ))
+            conn.commit()
+            conn.close()
 
     return render_template("index.html", data=filtered, forms=forms, inns=inns, guest=not user_authenticated)
 
@@ -149,7 +155,6 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
-from werkzeug.security import generate_password_hash
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -180,6 +185,7 @@ def register():
 
     return render_template("register.html")
 
+
 @app.route("/history")
 def history():
     if "user_id" not in session:
@@ -188,19 +194,29 @@ def history():
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT timestamp, name_filter, form_filter, inn_filter, result_count
+        SELECT timestamp, name_filter, form_filter, inn_filter, result_count, results_json
         FROM query_history
         WHERE user_id = ?
         ORDER BY timestamp DESC
     """, (session["user_id"],))
-    history_records = cursor.fetchall()
+
+    rows = cursor.fetchall()
     conn.close()
 
-    return render_template("history.html", records=history_records)
+    # перетворимо на список словників для зручності в шаблоні
+    records = []
+    for row in rows:
+        records.append({
+            "timestamp": row[0],
+            "name_filter": row[1],
+            "form_filter": row[2],
+            "inn_filter": row[3],
+            "result_count": row[4],
+            "results": json.loads(row[5]) if row[5] else []
+        })
 
+    return render_template("history.html", records=records)
 
-from flask import make_response
-import json
 
 @app.route("/save_results", methods=["POST"])
 def save_results():
@@ -226,10 +242,6 @@ def save_results():
     response.headers["Content-Disposition"] = "attachment; filename=result.csv"
     response.headers["Content-Type"] = "text/csv; charset=utf-8"
     return response
-
-import os
-import requests
-import csv
 
 # 🔽 ID твого файла з Google Диску
 DRIVE_FILE_ID = "1Fn6iv3UNRPajBFbU-yKSzuRqHz1m4K61"

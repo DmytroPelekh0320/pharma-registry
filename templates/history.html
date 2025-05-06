@@ -5,36 +5,52 @@
     <title>Історія запитів</title>
 </head>
 <body>
-    <h2>Історія ваших запитів</h2>
+    <h2>Історія запитів користувача</h2>
 
-    {% if records %}
-        <table border="1" cellpadding="8">
-            <thead>
-                <tr>
-                    <th>Дата та час</th>
-                    <th>Назва</th>
-                    <th>Форма</th>
-                    <th>МНН</th>
-                    <th>Кількість результатів</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in records %}
-                <tr>
-                    <td>{{ row[0] }}</td>
-                    <td>{{ row[1] or '—' }}</td>
-                    <td>{{ row[2] or '—' }}</td>
-                    <td>{{ row[3] or '—' }}</td>
-                    <td>{{ row[4] }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>У вас ще немає збережених запитів.</p>
-    {% endif %}
+    <table border="1">
+        <tr>
+            <th>Дата</th>
+            <th>Назва</th>
+            <th>Форма</th>
+            <th>МНН</th>
+            <th>Кількість</th>
+            <th>Деталі</th>
+        </tr>
+        {% for record in records %}
+        <tr>
+            <td>{{ record.timestamp }}</td>
+            <td>{{ record.name_filter or "—" }}</td>
+            <td>{{ record.form_filter or "—" }}</td>
+            <td>{{ record.inn_filter or "—" }}</td>
+            <td>{{ record.result_count }}</td>
+            <td>
+                <button onclick="toggleDetails('row{{ loop.index }}')">Показати</button>
+            </td>
+        </tr>
+        <tr id="row{{ loop.index }}" style="display: none;">
+            <td colspan="6">
+                {% if record.results and record.results|length > 0 %}
+                    <ul>
+                        {% for item in record.results %}
+                        <li>
+                            {{ item.get("Торгівельне найменування", "—") }} — 
+                            {{ item.get("Форма випуску", "—") }} — 
+                            {{ item.get("Міжнародне непатентоване найменування", "—") }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>Немає результатів.</p>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
 
     <br>
-    <a href="{{ url_for('index') }}">⬅ Повернутися до пошуку</a>
+    <a href="{{ url_for('index') }}">Повернутися до пошуку</a>
+
+    <!-- Підключення зовнішнього JS -->
+    <script src="{{ url_for('static', filename='js/toggle.js') }}"></script>
 </body>
 </html>

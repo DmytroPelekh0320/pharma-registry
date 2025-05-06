@@ -5,3 +5,5 @@ instance/
 *.db
 *.sqlite3
 reestr.csv
+query.py
+init_db.py

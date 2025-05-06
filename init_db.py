@@ -14,9 +14,12 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """)
 
-# Створення таблиці історії запитів
+# Видалення старої таблиці (якщо потрібно повністю оновити структуру)
+cursor.execute("DROP TABLE IF EXISTS query_history")
+
+# Створення оновленої таблиці історії запитів з results_json
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS query_history (
+CREATE TABLE query_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     timestamp TEXT NOT NULL,
@@ -24,6 +27,7 @@ CREATE TABLE IF NOT EXISTS query_history (
     form_filter TEXT,
     inn_filter TEXT,
     result_count INTEGER,
+    results_json TEXT,
     FOREIGN KEY(user_id) REFERENCES users(id)
 )
 """)
