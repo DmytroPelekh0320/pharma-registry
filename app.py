@@ -373,6 +373,39 @@ def load_data():
             data.append(row)
     return data
 
+@app.route("/charts")
+def charts():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    # Отримуємо унікальні форми з CSV
+    all_data = load_data()
+    forms = sorted(set(
+        simplify_form(row["Форма випуску"], keywords)
+        for row in all_data
+    ))
+
+    return render_template("charts.html", forms=forms)
+
+
+
+@app.route("/chart-data", methods=["POST"])
+def chart_data():
+    data = request.get_json()
+    selected_forms = data.get("selected_forms", [])
+
+    all_data = load_data()
+    stats = {}
+
+    for row in all_data:
+        form = simplify_form(row["Форма випуску"], keywords)
+        if not selected_forms or form in selected_forms:
+            stats[form] = stats.get(form, 0) + 1
+
+    return jsonify(stats)
+
+
+
 
 # 🔁 Запуск
 if __name__ == "__main__":

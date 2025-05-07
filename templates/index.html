@@ -31,14 +31,16 @@
     <div id="results"></div>
 
     {% if not guest %}
-        <form id="saveForm" action="{{ url_for('save_results') }}" method="post">
-            <input type="hidden" name="results" id="resultsInput">
-            <button type="submit">Зберегти результати</button>
-        </form>
-        <a href="{{ url_for('history') }}">Переглянути історію</a>
-    {% else %}
-        <button disabled>Зберегти результати (доступно після входу)</button>
-    {% endif %}
+    <a href="{{ url_for('charts') }}">Перейти до графіків</a><br><br>
+    <form id="saveForm" action="{{ url_for('save_results') }}" method="post">
+        <input type="hidden" name="results" id="resultsInput">
+        <button type="submit">Зберегти результати</button>
+    </form>
+    <a href="{{ url_for('history') }}">Переглянути історію</a>
+{% else %}
+    <button disabled>Зберегти результати (доступно після входу)</button>
+{% endif %}
+
 
     <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 </body>
