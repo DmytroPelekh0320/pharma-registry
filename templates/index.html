@@ -6,11 +6,11 @@
 </head>
 <body>
     <h2>Пошук лікарських засобів</h2>
-    <form method="post">
-        <input type="text" name="name" placeholder="Назва препарату"><br><br>
+    <form id="searchForm">
+        <input type="text" id="name" name="name" placeholder="Назва препарату"><br><br>
 
         <label>Форма випуску:</label>
-        <select name="form">
+        <select id="form" name="form">
             <option value="">Усі</option>
             {% for f in forms %}
                 <option value="{{ f }}">{{ f }}</option>
@@ -18,7 +18,7 @@
         </select><br><br>
 
         <label>МНН:</label>
-        <select name="inn">
+        <select id="inn" name="inn">
             <option value="">Усі</option>
             {% for i in inns %}
                 <option value="{{ i }}">{{ i }}</option>
@@ -28,37 +28,18 @@
         <button type="submit">Пошук</button>
     </form>
 
-    {% if data %}
-        <h3>Результати:</h3>
-        <table border="1">
-            <tr>
-                <th>Назва</th>
-                <th>МНН</th>
-                <th>Форма</th>
-            </tr>
-            {% for row in data %}
-            <tr>
-                <td>{{ row["Торгівельне найменування"] }}</td>
-                <td>{{ row["Міжнародне непатентоване найменування"] }}</td>
-                <td>{{ row["Форма випуску"] }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-    {% else %}
-        <p>Виконай пошук, щоб побачити результати.</p>
-    {% endif %}
+    <div id="results"></div>
+
     {% if not guest %}
-    <form action="{{ url_for('save_results') }}" method="post">
-        <input type="hidden" name="results" value='{{ data | tojson }}'>
-        <button type="submit">Зберегти результати</button>
-    </form>
-{% else %}
-    <button disabled>Зберегти результати (доступно після входу)</button>
-{% endif %}
-{% if not guest %}
-    <a href="{{ url_for('history') }}">Переглянути історію</a>
-{% endif %}
+        <form id="saveForm" action="{{ url_for('save_results') }}" method="post">
+            <input type="hidden" name="results" id="resultsInput">
+            <button type="submit">Зберегти результати</button>
+        </form>
+        <a href="{{ url_for('history') }}">Переглянути історію</a>
+    {% else %}
+        <button disabled>Зберегти результати (доступно після входу)</button>
+    {% endif %}
 
-
+    <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 </body>
 </html>

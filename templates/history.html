@@ -39,6 +39,7 @@
                         </li>
                         {% endfor %}
                     </ul>
+                    <a href="{{ url_for('download', record_id=record.id) }}">Завантажити CSV</a>
                 {% else %}
                     <p>Немає результатів.</p>
                 {% endif %}
