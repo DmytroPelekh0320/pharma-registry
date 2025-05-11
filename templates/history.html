@@ -13,6 +13,7 @@
             <th>Назва</th>
             <th>Форма</th>
             <th>МНН</th>
+            <th>Країна</th>
             <th>Кількість</th>
             <th>Деталі</th>
         </tr>
@@ -22,23 +23,37 @@
             <td>{{ record.name_filter or "—" }}</td>
             <td>{{ record.form_filter or "—" }}</td>
             <td>{{ record.inn_filter or "—" }}</td>
+            <td>
+                {% set first_country = record.results[0]["Країна виробника"] if record.results and record.results[0].get("Країна виробника") else "—" %}
+                {{ first_country }}
+            </td>
             <td>{{ record.result_count }}</td>
             <td>
                 <button onclick="toggleDetails('row{{ loop.index }}')">Показати</button>
             </td>
         </tr>
         <tr id="row{{ loop.index }}" style="display: none;">
-            <td colspan="6">
+            <td colspan="7">
                 {% if record.results and record.results|length > 0 %}
-                    <ul>
+                    <table border="1" style="margin-top: 10px;">
+                        <tr>
+                            <th>#</th>
+                            <th>Назва</th>
+                            <th>Форма</th>
+                            <th>МНН</th>
+                            <th>Країна</th>
+                        </tr>
                         {% for item in record.results %}
-                        <li>
-                            {{ item.get("Торгівельне найменування", "—") }} — 
-                            {{ item.get("Форма випуску", "—") }} — 
-                            {{ item.get("Міжнародне непатентоване найменування", "—") }}
-                        </li>
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ item.get("Торгівельне найменування", "—") }}</td>
+                            <td>{{ item.get("Форма випуску", "—") }}</td>
+                            <td>{{ item.get("Міжнародне непатентоване найменування", "—") }}</td>
+                            <td>{{ item.get("Країна виробника", "—") }}</td>
+                        </tr>
                         {% endfor %}
-                    </ul>
+                    </table>
+                    <br>
                     <a href="{{ url_for('download', record_id=record.id) }}">Завантажити CSV</a>
                 {% else %}
                     <p>Немає результатів.</p>
@@ -51,7 +66,7 @@
     <br>
     <a href="{{ url_for('index') }}">Повернутися до пошуку</a>
 
-    <!-- Підключення зовнішнього JS -->
+    <!-- Підключення toggle.js -->
     <script src="{{ url_for('static', filename='js/toggle.js') }}"></script>
 </body>
 </html>

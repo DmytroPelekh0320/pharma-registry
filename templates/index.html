@@ -1,36 +1,43 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-    <meta charset="UTF-8">
-    <title>Фармацевтичний реєстр</title>
-</head>
-<body>
-    <h2>Пошук лікарських засобів</h2>
-    <form id="searchForm">
-        <input type="text" id="name" name="name" placeholder="Назва препарату"><br><br>
+<h2>Пошук лікарських засобів</h2>
+<form id="searchForm">
+    <label><input type="checkbox" id="enableName"> Назва препарату</label><br>
+    <select id="name" name="name" style="display:none;">
+        <option value="">Оберіть назву</option>
+        {% for n in names %}
+            <option value="{{ n }}">{{ n }}</option>
+        {% endfor %}
+    </select><br><br>
 
-        <label>Форма випуску:</label>
-        <select id="form" name="form">
-            <option value="">Усі</option>
-            {% for f in forms %}
-                <option value="{{ f }}">{{ f }}</option>
-            {% endfor %}
-        </select><br><br>
+    <label><input type="checkbox" id="enableForm"> Форма випуску</label><br>
+    <select id="form" name="form" style="display:none;">
+        <option value="">Оберіть форму</option>
+        {% for f in forms %}
+            <option value="{{ f }}">{{ f }}</option>
+        {% endfor %}
+    </select><br><br>
 
-        <label>МНН:</label>
-        <select id="inn" name="inn">
-            <option value="">Усі</option>
-            {% for i in inns %}
-                <option value="{{ i }}">{{ i }}</option>
-            {% endfor %}
-        </select><br><br>
+    <label><input type="checkbox" id="enableInn"> МНН</label><br>
+    <select id="inn" name="inn" style="display:none;">
+        <option value="">Оберіть МНН</option>
+        {% for i in inns %}
+            <option value="{{ i }}">{{ i }}</option>
+        {% endfor %}
+    </select><br><br>
 
-        <button type="submit">Пошук</button>
-    </form>
+    <label><input type="checkbox" id="enableCountry"> Країна виробника</label><br>
+    <select id="country" name="country" style="display:none;">
+        <option value="">Оберіть країну</option>
+        {% for c in countries %}
+            <option value="{{ c }}">{{ c }}</option>
+        {% endfor %}
+    </select><br><br>
 
-    <div id="results"></div>
+    <button type="submit">Пошук</button>
+</form>
 
-    {% if not guest %}
+<div id="results"></div>
+
+{% if not guest %}
     <a href="{{ url_for('charts') }}">Перейти до графіків</a><br><br>
     <form id="saveForm" action="{{ url_for('save_results') }}" method="post">
         <input type="hidden" name="results" id="resultsInput">
@@ -41,7 +48,4 @@
     <button disabled>Зберегти результати (доступно після входу)</button>
 {% endif %}
 
-
-    <script src="{{ url_for('static', filename='js/search.js') }}"></script>
-</body>
-</html>
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>

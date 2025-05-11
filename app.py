@@ -100,92 +100,66 @@ def verify():
 
     return render_template("verify.html")
 
-# 📄 Головна сторінка з фільтрацією
-# @app.route("/", methods=["GET", "POST"])
-# def index():
-#     user_authenticated = "user_id" in session
-
-#     data = load_data()
-
-#     for row in data:
-#         original_form = row["Форма випуску"]
-#         row["Форма випуску"] = simplify_form(original_form, keywords)
-
-#     forms = sorted(set(row["Форма випуску"] for row in data))
-#     inns = sorted(set(row["Міжнародне непатентоване найменування"] for row in data if row["Міжнародне непатентоване найменування"]))
-
-#     filtered = []
-
-#     if request.method == "POST":
-#         name_filter = request.form.get("name", "")
-#         form_filter = request.form.get("form", "")
-#         inn_filter = request.form.get("inn", "")
-
-#         for row in data:
-#             if name_filter and name_filter.lower() not in row["Торгівельне найменування"].lower():
-#                 continue
-#             if form_filter and row["Форма випуску"] != form_filter:
-#                 continue
-#             if inn_filter and row["Міжнародне непатентоване найменування"] != inn_filter:
-#                 continue
-#             filtered.append(row)
-#         if user_authenticated:
-#             conn = sqlite3.connect("users.db")
-#             cursor = conn.cursor()
-#             cursor.execute("""
-#         INSERT INTO query_history (
-#             user_id, timestamp, name_filter, form_filter, inn_filter, result_count, results_json
-#         ) VALUES (?, ?, ?, ?, ?, ?, ?)
-#     """, (
-#         session["user_id"],
-#         datetime.now().isoformat(),
-#         name_filter or None,
-#         form_filter or None,
-#         inn_filter or None,
-#         len(filtered),
-#         json.dumps(filtered, ensure_ascii=False)
-#     ))
-#             conn.commit()
-#             conn.close()
-
-#     return render_template("index.html", data=filtered, forms=forms, inns=inns, guest=not user_authenticated)
 @app.route("/", methods=["GET"])
 def index():
     data = load_data()
 
-    # Спрощення форми випуску
     for row in data:
         row["Форма випуску"] = simplify_form(row["Форма випуску"], keywords)
 
     forms = sorted(set(row["Форма випуску"] for row in data))
     inns = sorted(set(row["Міжнародне непатентоване найменування"] for row in data if row["Міжнародне непатентоване найменування"]))
+    names = sorted(set(row["Торгівельне найменування"] for row in data if row["Торгівельне найменування"]))
 
-    return render_template("index.html", forms=forms, inns=inns, guest="user_id" not in session)
+    def get_first_country(row):
+        for i in range(1, 6):
+            key = f"Виробник {i}: країна".strip()
+            val = row.get(key)
+            if val and isinstance(val, str) and val.strip():
+                return val.strip()
+        return None
+
+    countries = sorted(set(filter(None, (get_first_country(row) for row in data))))
+
+    return render_template("index.html", forms=forms, inns=inns, names=names, countries=countries, guest="user_id" not in session)
+
+
 
 
 @app.route("/search", methods=["POST"])
 def search():
+    def get_first_country(row):
+        for i in range(1, 6):
+            key = f"Виробник {i}: країна".strip()
+            val = row.get(key)
+            if val and isinstance(val, str) and val.strip():
+                return val.strip()
+        return "Невідомо"
+
     data = request.get_json()
     name_filter = data.get("name", "").lower()
     form_filter = data.get("form", "")
     inn_filter = data.get("inn", "")
+    country_filter = data.get("country", "")
 
     results = []
     all_data = load_data()
 
     for row in all_data:
-        original_form = row["Форма випуску"]
-        row["Форма випуску"] = simplify_form(original_form, keywords)
+        row["Форма випуску"] = simplify_form(row["Форма випуску"], keywords)
+        row["Країна виробника"] = get_first_country(row)
 
-        if name_filter and name_filter not in row["Торгівельне найменування"].lower():
+        if name_filter and name_filter != row["Торгівельне найменування"].lower():
             continue
         if form_filter and row["Форма випуску"] != form_filter:
             continue
         if inn_filter and row["Міжнародне непатентоване найменування"] != inn_filter:
             continue
+        if country_filter and row["Країна виробника"] != country_filter:
+            continue
+
         results.append(row)
 
-    # Запис у query_history тільки для авторизованих
     if "user_id" in session:
         try:
             conn = sqlite3.connect("users.db")
@@ -209,8 +183,6 @@ def search():
             print(f"[ERROR] Неможливо записати історію: {e}")
 
     return jsonify(results)
-
-
 
 
 # 🚪 Вихід
@@ -303,13 +275,19 @@ def download(record_id):
     results = json.loads(row[0])
 
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=["Торгівельне найменування", "Форма випуску", "Міжнародне непатентоване найменування"])
+    writer = csv.DictWriter(output, fieldnames=[
+        "Торгівельне найменування",
+        "Форма випуску",
+        "Міжнародне непатентоване найменування",
+        "Країна виробника"
+    ])
     writer.writeheader()
     for item in results:
         writer.writerow({
             "Торгівельне найменування": item.get("Торгівельне найменування", ""),
             "Форма випуску": item.get("Форма випуску", ""),
-            "Міжнародне непатентоване найменування": item.get("Міжнародне непатентоване найменування", "")
+            "Міжнародне непатентоване найменування": item.get("Міжнародне непатентоване найменування", ""),
+            "Країна виробника": item.get("Країна виробника", "")
         })
 
     output.seek(0)
@@ -317,6 +295,7 @@ def download(record_id):
                      mimetype="text/csv",
                      as_attachment=True,
                      download_name=f"results_{record_id}.csv")
+
 
 @app.route("/save_results", methods=["POST"])
 def save_results():
@@ -332,16 +311,16 @@ def save_results():
     except Exception as e:
         return f"Помилка обробки даних: {str(e)}", 400
 
-    # BOM для Excel
     bom = '\ufeff'
-    csv_content = bom + "Торгівельне найменування,Форма випуску,МНН\n"
+    csv_content = bom + "Торгівельне найменування,Форма випуску,МНН,Країна виробника\n"
     for row in records:
-        csv_content += f"{row.get('Торгівельне найменування','')},{row.get('Форма випуску','')},{row.get('Міжнародне непатентоване найменування','')}\n"
+        csv_content += f"{row.get('Торгівельне найменування','')},{row.get('Форма випуску','')},{row.get('Міжнародне непатентоване найменування','')},{row.get('Країна виробника','')}\n"
 
     response = make_response(csv_content)
     response.headers["Content-Disposition"] = "attachment; filename=result.csv"
     response.headers["Content-Type"] = "text/csv; charset=utf-8"
     return response
+
 
 # 🔽 ID твого файла з Google Диску
 DRIVE_FILE_ID = "1Fn6iv3UNRPajBFbU-yKSzuRqHz1m4K61"
