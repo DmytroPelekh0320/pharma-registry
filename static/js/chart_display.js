@@ -32,6 +32,18 @@ async function fetchDataAndRenderChart(type = "bar") {
         },
         options: {
             responsive: true,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                            const value = context.raw;
+                            const percent = ((value / total) * 100).toFixed(1);
+                            return `${context.label}: ${value} (${percent}%)`;
+                        }
+                    }
+                }
+            },
             scales: type === "bar" || type === "line" ? {
                 y: { beginAtZero: true }
             } : {}
@@ -39,9 +51,18 @@ async function fetchDataAndRenderChart(type = "bar") {
     });
 }
 
+function saveChartAsImage() {
+    const canvas = document.getElementById("releaseChart");
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = "chart.png";
+    link.click();
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     const typeSelector = document.getElementById("chartType");
     const formSelector = document.getElementById("formSelect");
+    const saveBtn = document.getElementById("saveChartBtn");
 
     function render() {
         fetchDataAndRenderChart(typeSelector.value);
@@ -49,6 +70,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     typeSelector.addEventListener("change", render);
     formSelector.addEventListener("change", render);
+    saveBtn.addEventListener("click", saveChartAsImage);
 
     render(); // Початкове завантаження
 });
