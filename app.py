@@ -357,33 +357,67 @@ def charts():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    # Отримуємо унікальні форми з CSV
     all_data = load_data()
+
     forms = sorted(set(
         simplify_form(row["Форма випуску"], keywords)
         for row in all_data
     ))
 
-    return render_template("charts.html", forms=forms)
+    inns = sorted(set(
+        row["Міжнародне непатентоване найменування"]
+        for row in all_data if row["Міжнародне непатентоване найменування"]
+    ))
 
+    def get_first_country(row):
+        for i in range(1, 6):
+            val = row.get(f"Виробник {i}: країна")
+            if val and val.strip():
+                return val.strip()
+        return None
+
+    countries = sorted(set(
+        filter(None, (get_first_country(row) for row in all_data))
+    ))
+
+    return render_template("charts.html", forms=forms, inns=inns, countries=countries)
 
 
 @app.route("/chart-data", methods=["POST"])
 def chart_data():
     data = request.get_json()
     selected_forms = data.get("selected_forms", [])
+    selected_inns = data.get("selected_inns", [])
+    selected_countries = data.get("selected_countries", [])
 
     all_data = load_data()
-    stats = {}
+    grouped_stats = {}
+
+    def get_first_country(row):
+        for i in range(1, 6):
+            val = row.get(f"Виробник {i}: країна")
+            if val and val.strip():
+                return val.strip()
+        return "Невідомо"
 
     for row in all_data:
         form = simplify_form(row["Форма випуску"], keywords)
-        if not selected_forms or form in selected_forms:
-            stats[form] = stats.get(form, 0) + 1
+        inn = row.get("Міжнародне непатентоване найменування", "")
+        country = get_first_country(row)
 
-    return jsonify(stats)
+        if selected_forms and form not in selected_forms:
+            continue
+        if selected_inns and inn not in selected_inns:
+            continue
+        if selected_countries and country not in selected_countries:
+            continue
 
+        if form not in grouped_stats:
+            grouped_stats[form] = {}
 
+        grouped_stats[form][country] = grouped_stats[form].get(country, 0) + 1
+
+    return jsonify(grouped_stats)
 
 
 # 🔁 Запуск
