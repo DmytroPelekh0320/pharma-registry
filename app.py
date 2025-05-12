@@ -405,9 +405,9 @@ def chart_data():
     selected_forms = data.get("selected_forms", [])
     selected_inns = data.get("selected_inns", [])
     selected_countries = data.get("selected_countries", [])
+    chart_type = data.get("chart_type", "bar")
 
     all_data = load_data()
-    grouped_stats = {}
 
     def get_first_country(row):
         for i in range(1, 6):
@@ -416,10 +416,12 @@ def chart_data():
                 return val.strip()
         return "Невідомо"
 
+    result = {}
+
     for row in all_data:
         form = simplify_form(row["Форма випуску"], keywords)
-        inn = row.get("Міжнародне непатентоване найменування", "")
         country = get_first_country(row)
+        inn = row["Міжнародне непатентоване найменування"]
 
         if selected_forms and form not in selected_forms:
             continue
@@ -428,12 +430,23 @@ def chart_data():
         if selected_countries and country not in selected_countries:
             continue
 
-        if form not in grouped_stats:
-            grouped_stats[form] = {}
+        # --- ВИЗНАЧАЄМО ЯКУ СТРУКТУРУ ПОВЕРТАТИ ---
+        if chart_type in ["pie", "line"]:
+            if len(selected_forms) == 1 and not selected_countries:
+                # Форма → країни
+                result[country] = result.get(country, 0) + 1
+            elif len(selected_countries) == 1:
+                # Країна → форми
+                result[form] = result.get(form, 0) + 1
+            else:
+                return jsonify({})
+        else:
+            # Групована bar: форма → країна → кількість
+            if form not in result:
+                result[form] = {}
+            result[form][country] = result[form].get(country, 0) + 1
 
-        grouped_stats[form][country] = grouped_stats[form].get(country, 0) + 1
-
-    return jsonify(grouped_stats)
+    return jsonify(result)
 
 
 # 🔁 Запуск

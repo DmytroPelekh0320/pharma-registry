@@ -1,118 +1,155 @@
 let chartInstance = null;
 
 async function fetchDataAndRenderChart(type = "bar") {
-  const formSelect = document.getElementById("formSelect");
-  const innSelect = document.getElementById("innSelect");
-  const countrySelect = document.getElementById("countrySelect");
+    const formSelect = document.getElementById("formSelect");
+    const innSelect = document.getElementById("innSelect");
+    const countrySelect = document.getElementById("countrySelect");
 
-  const selectedForms = Array.from(formSelect.selectedOptions).map(opt => opt.value);
-  const selectedInns = Array.from(innSelect.selectedOptions).map(opt => opt.value);
-  const selectedCountries = Array.from(countrySelect.selectedOptions).map(opt => opt.value);
+    const selectedForms = Array.from(formSelect.selectedOptions).map(opt => opt.value);
+    const selectedInns = Array.from(innSelect.selectedOptions).map(opt => opt.value);
+    const selectedCountries = Array.from(countrySelect.selectedOptions).map(opt => opt.value);
 
-  const response = await fetch("/chart-data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-          selected_forms: selectedForms,
-          selected_inns: selectedInns,
-          selected_countries: selectedCountries
-      })
-  });
+    const response = await fetch("/chart-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            selected_forms: selectedForms,
+            selected_inns: selectedInns,
+            selected_countries: selectedCountries,
+            chart_type: type
+        })
+    });
 
-  const data = await response.json(); // { форма: { країна: кількість } }
-  const allForms = Object.keys(data);
+    const data = await response.json();
+    console.log("Отримано дані від сервера:", data);
 
-  const ctx = document.getElementById("releaseChart").getContext("2d");
-  if (chartInstance) {
-      chartInstance.destroy();
-  }
+    const ctx = document.getElementById("releaseChart").getContext("2d");
+    if (chartInstance) chartInstance.destroy();
 
-  // ГРУПОВАНА СТОВПЧАСТА
-  if (type === "bar") {
-      const allCountries = Array.from(new Set(
-          allForms.flatMap(form => Object.keys(data[form]))
-      ));
+    // BAR-графік — звична групована візуалізація
+    if (type === "bar") {
+        const allForms = Object.keys(data);
+        const allCountries = Array.from(new Set(
+            allForms.flatMap(form => Object.keys(data[form]))
+        ));
 
-      const datasets = allCountries.map((country, i) => ({
-          label: country,
-          data: allForms.map(form => data[form][country] || 0),
-          backgroundColor: getColor(i)
-      }));
+        const datasets = allCountries.map((country, i) => ({
+            label: country,
+            data: allForms.map(form => data[form][country] || 0),
+            backgroundColor: getColor(i)
+        }));
 
-      chartInstance = new Chart(ctx, {
-          type: "bar",
-          data: {
-              labels: allForms,
-              datasets: datasets
-          },
-          options: {
-              responsive: true,
-              plugins: {
-                  tooltip: {
-                      mode: 'index',
-                      callbacks: {
-                          label: function (context) {
-                              const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
-                              const value = context.raw;
-                              const percent = ((value / total) * 100).toFixed(1);
-                              return `${context.dataset.label}: ${value} (${percent}%)`;
-                          }
-                      }
-                  },
-                  legend: { position: 'top' }
-              },
-              scales: {
-                  x: { stacked: false },
-                  y: {
-                      beginAtZero: true,
-                      ticks: { precision: 0 }
-                  }
-              }
-          }
-      });
-  }
+        chartInstance = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: allForms,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        callbacks: {
+                            label: function (context) {
+                                const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                const value = context.raw;
+                                const percent = ((value / total) * 100).toFixed(1);
+                                return `${context.dataset.label}: ${value} (${percent}%)`;
+                            }
+                        }
+                    },
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    x: { stacked: false },
+                    y: { beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        });
+        return;
+    }
 
-  // КРУГОВІ / ЛІНІЙНІ — лише по 1 країні
-  else {
-      if (selectedCountries.length !== 1) {
-          alert("Для цього типу графіка виберіть одну країну.");
-          return;
-      }
+    // PIE або LINE графіки — тільки 1 форма або 1 країна
+    if (selectedForms.length === 1 && selectedCountries.length !== 1) {
+        // форма → країни
+        const labels = Object.keys(data);
+        const values = Object.values(data);
 
-      const country = selectedCountries[0];
-      const values = allForms.map(form => data[form][country] || 0);
+        chartInstance = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: selectedForms[0],
+                    data: values,
+                    backgroundColor: labels.map((_, i) => getColor(i))
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                const value = context.raw;
+                                const percent = ((value / total) * 100).toFixed(1);
+                                return `${context.label}: ${value} (${percent}%)`;
+                            }
+                        }
+                    }
+                },
+                scales: type === "line" ? {
+                    y: { beginAtZero: true }
+                } : {}
+            }
+        });
+        return;
+    }
 
-      chartInstance = new Chart(ctx, {
-          type: type,
-          data: {
-              labels: allForms,
-              datasets: [{
-                  label: country,
-                  data: values,
-                  backgroundColor: allForms.map((_, i) => getColor(i))
-              }]
-          },
-          options: {
-              responsive: true,
-              plugins: {
-                  tooltip: {
-                      callbacks: {
-                          label: function (context) {
-                              const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
-                              const value = context.raw;
-                              const percent = ((value / total) * 100).toFixed(1);
-                              return `${context.label}: ${value} (${percent}%)`;
-                          }
-                      }
-                  }
-              },
-              scales: type === "line" ? {
-                  y: { beginAtZero: true }
-              } : {}
-          }
-      });
-  }
+    if (selectedCountries.length === 1 && selectedForms.length !== 1) {
+        // країна → форми
+        const labels = Object.keys(data);
+        const values = Object.values(data);
+
+
+        chartInstance = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: selectedCountries[0],
+                    data: values,
+                    backgroundColor: labels.map((_, i) => getColor(i))
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                const value = context.raw;
+                                const percent = ((value / total) * 100).toFixed(1);
+                                return `${context.label}: ${value} (${percent}%)`;
+                            }
+                        }
+                    }
+                },
+                scales: type === "line" ? {
+                    y: { beginAtZero: true }
+                } : {}
+            }
+        });
+        return;
+    }
+
+    // якщо умови не виконано — попередження
+    showAlert("Щоб побудувати кругову або лінійну діаграму, виберіть лише одну форму або одну країну.");
 }
+
 
 
 function getColor(index) {
@@ -151,3 +188,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     render(); // Початкове завантаження
 });
+
+function showAlert(message) {
+    const alertBox = document.getElementById("alertBox");
+    alertBox.textContent = message;
+    alertBox.style.display = "block";
+    setTimeout(() => {
+        alertBox.style.display = "none";
+    }, 5000); // автоматично зникає через 5 секунд
+}
