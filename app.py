@@ -166,14 +166,15 @@ def search():
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO query_history (
-                    user_id, timestamp, name_filter, form_filter, inn_filter, result_count, results_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    user_id, timestamp, name_filter, form_filter, inn_filter, country_filter, result_count, results_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 session["user_id"],
                 datetime.now().isoformat(),
                 name_filter or None,
                 form_filter or None,
                 inn_filter or None,
+                country_filter or None,
                 len(results),
                 json.dumps(results, ensure_ascii=False)
             ))
@@ -183,6 +184,7 @@ def search():
             print(f"[ERROR] Неможливо записати історію: {e}")
 
     return jsonify(results)
+
 
 
 # 🚪 Вихід
@@ -230,7 +232,7 @@ def history():
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT id, timestamp, name_filter, form_filter, inn_filter, result_count, results_json
+        SELECT id, timestamp, name_filter, form_filter, inn_filter, country_filter, result_count, results_json
         FROM query_history
         WHERE user_id = ?
         ORDER BY timestamp DESC
@@ -247,11 +249,13 @@ def history():
             "name_filter": row[2],
             "form_filter": row[3],
             "inn_filter": row[4],
-            "result_count": row[5],
-            "results": json.loads(row[6] or "[]")  # 👈 Десеріалізовані дані
+            "country_filter": row[5],
+            "result_count": row[6],
+            "results": json.loads(row[7] or "[]")
         })
 
     return render_template("history.html", records=records)
+
 
 
 
@@ -380,7 +384,19 @@ def charts():
         filter(None, (get_first_country(row) for row in all_data))
     ))
 
-    return render_template("charts.html", forms=forms, inns=inns, countries=countries)
+    # Отримання GET-параметрів
+    preset_form = request.args.get("form")
+    preset_inn = request.args.get("inn")
+    preset_country = request.args.get("country")
+
+    return render_template("charts.html",
+                           forms=forms,
+                           inns=inns,
+                           countries=countries,
+                           preset_form=preset_form,
+                           preset_inn=preset_inn,
+                           preset_country=preset_country)
+
 
 
 @app.route("/chart-data", methods=["POST"])

@@ -15,7 +15,7 @@
             <th>МНН</th>
             <th>Країна</th>
             <th>Кількість</th>
-            <th>Деталі</th>
+            <th>Дії</th>
         </tr>
         {% for record in records %}
         <tr>
@@ -23,13 +23,14 @@
             <td>{{ record.name_filter or "—" }}</td>
             <td>{{ record.form_filter or "—" }}</td>
             <td>{{ record.inn_filter or "—" }}</td>
-            <td>
-                {% set first_country = record.results[0]["Країна виробника"] if record.results and record.results[0].get("Країна виробника") else "—" %}
-                {{ first_country }}
-            </td>
+            <td>{{ record.country_filter or "—" }}</td>
             <td>{{ record.result_count }}</td>
             <td>
-                <button onclick="toggleDetails('row{{ loop.index }}')">Показати</button>
+                <button onclick="toggleDetails('row{{ loop.index }}')">Показати</button> |
+                <a href="{{ url_for('charts',
+                                    form=record.form_filter if record.form_filter else None,
+                                    inn=record.inn_filter if record.inn_filter else None,
+                                    country=record.country_filter if record.country_filter else None) }}">Побудувати графік</a>
             </td>
         </tr>
         <tr id="row{{ loop.index }}" style="display: none;">
@@ -66,7 +67,6 @@
     <br>
     <a href="{{ url_for('index') }}">Повернутися до пошуку</a>
 
-    <!-- Підключення toggle.js -->
     <script src="{{ url_for('static', filename='js/toggle.js') }}"></script>
 </body>
 </html>
