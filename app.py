@@ -4,6 +4,7 @@ from werkzeug.security import check_password_hash
 import sqlite3
 from flask import send_file
 import random
+import pandas as pd
 import os
 import requests
 from datetime import datetime
@@ -13,6 +14,8 @@ import json
 import io
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
+polish_data_cache = None
+
 load_dotenv()
 
 
@@ -34,22 +37,114 @@ mail = Mail(app)
 # Словник ключових слів
 keywords = ["Аерозоль", "Бальзам", "Бруньки", "Внутрішньом'язові ін'єкції", "Вушні краплі", "Газ", "Гель", "Генератор", "Гранули", "Гранулят", "Гумка", "Густа маса", "Драже", "Екстракт", "Емульгель", "Емульсія", "Жувальні таблетки", "Збір", "Ін'єкції",  "Капсули", "Квітки", "Концентрат", "Кора", "Кореневища", "Корені", "Корінь", "Краплі", "Крем", "Кубики", "Кільце", "Лак", "Листя", "Лосьйон", "Льодяник", "Лікарська рослинна сировина",
             "Лінімент", "Ліофілізат", "Мазь", "Набір", "Настойка", "Насіння", "Олія", "Ополіскувач", "Пари", "Паста", "Пастилки", "Пелети", "Песарії", "Пластир", "Плитки", "Плоди", "Порошок", "Підшкірні імплантати", "Піна", "Розчин", "Розчинник", "Рідина", "Сироп", "Слані", "Спрей", "Стулки", "Субстанція", "Супліддя", "Супозиторії", "Суспензія", "Таблетки", "Таблетки пролонгованої дії", "Таблетки шипучі", "Трава", "Чай", "Шампунь"]
-
-# Читання CSV
-def load_data():
-    data = []
-    with open("reestr.csv", encoding="cp1251") as f:
-        reader = csv.DictReader(f, delimiter=';')
-        for row in reader:
-            data.append(row)
-    return data
-
 # Спрощення форми
 def simplify_form(text, keywords):
     for keyword in keywords:
         if keyword.lower() in text.lower():
             return keyword
     return "Інше"
+
+
+# Польські ключові форми випуску
+polish_keywords = [
+    "Aerozol", "Balsam", "Gaz", "Żel", "Granulat", "Drażetki", "Ekstrakt", "Emulsja",
+    "Tabletki", "Kapsułki", "Maść", "Syrop", "Krople", "Roztwór", "Zawiesina", "Pasta",
+    "Płyn", "Liofilizat", "Czopki", "Spray", "Substancja", "Implant", "Plaster", "Szampon",
+    "Koncentrat", "Proszek", "Zioła", "Globulki", "Pastylki"
+]
+
+def simplify_form_polish(text, keywords):
+    for keyword in keywords:
+        if keyword.lower() in text.lower():
+            return keyword
+    return "Inne"
+
+
+def load_data(source="ukraine"):
+    data = []
+
+    if source == "ukraine":
+        with open("reestr.csv", encoding="cp1251") as f:
+            reader = csv.DictReader(f, delimiter=';')
+            for row in reader:
+                form = simplify_form(row.get("Форма випуску", ""), keywords)
+                country = None
+                for i in range(1, 6):
+                    val = row.get(f"Виробник {i}: країна")
+                    if val and val.strip():
+                        country = val.strip()
+                        break
+                data.append({
+                    "Торгівельне найменування": row.get("Торгівельне найменування", "").strip(),
+                    "Форма випуску": form,
+                    "Міжнародне непатентоване найменування": row.get("Міжнародне непатентоване найменування", "").strip(),
+                    "Країна виробника": country or "Невідомо"
+                })
+
+    elif source == "poland":
+        global polish_data_cache
+
+        if polish_data_cache is None:
+            df = pd.read_excel(
+                "Rejestr_Produktow_Leczniczych_calosciowy_stan_na_dzien_20250302.xlsx",
+                engine="openpyxl",
+                usecols=[
+                    "Nazwa Produktu Leczniczego",
+                    "Postać farmaceutyczna",
+                    "Nazwa powszechnie stosowana",
+                    "Kraj wytwórcy"
+                ]
+            )
+            polish_data_cache = df.copy()
+        else:
+            df = polish_data_cache
+
+        total = 0
+        valid_names = 0
+        valid_inns = 0
+
+        for row in df.to_dict("records"):
+            total += 1
+            name = str(row.get("Nazwa Produktu Leczniczego", "")).strip()
+            inn = str(row.get("Nazwa powszechnie stosowana", "") or "").strip()
+            form_raw = str(row.get("Postać farmaceutyczna", "") or "").strip()
+            country = str(row.get("Kraj wytwórcy", "") or "").strip()
+
+            if not name or name.lower() in ("nan", ""):
+                continue
+            valid_names += 1
+
+            if not inn or inn.lower() in ("-", "nan") or inn.replace(".", "").isnumeric():
+                inn = "—"
+            else:
+                valid_inns += 1
+
+            if not country or country.lower() in ("nan",):
+                country = "Невідомо"
+
+            data.append({
+                "Торгівельне найменування": name,
+                "Форма випуску": simplify_form_polish(form_raw, polish_keywords),
+                "Міжнародне непатентоване найменування": inn,
+                "Країна виробника": country
+            })
+
+        print(f"🔍 Польський реєстр: зчитано рядків: {total}")
+        print(f"✅ Валідні назви: {valid_names}")
+        print(f"✅ Валідні МНН: {valid_inns}")
+        print(f"📦 Завантажено записів: {len(data)}")
+
+    return data
+
+
+
+
+
+def clean_country(val):
+    if not isinstance(val, str):
+        return None
+    return val.split('\n')[0].strip()
+
 
 # 🔐 Вхід
 @app.route("/login", methods=["GET", "POST"])
@@ -100,42 +195,80 @@ def verify():
 
     return render_template("verify.html")
 
+
+@app.route("/set_source", methods=["POST"])
+def set_source():
+    session["source"] = request.form.get("source", "ukraine")
+    return redirect(url_for("index"))
+
+
 @app.route("/", methods=["GET"])
 def index():
-    data = load_data()
+    source = session.get("source", "ukraine")
+    raw_data = load_data(source)
 
-    for row in data:
-        row["Форма випуску"] = simplify_form(row["Форма випуску"], keywords)
+    data = []
+    for row in raw_data:
+        # Спрощення форми випуску окремо, залежно від джерела
+        if source == "ukraine":
+            row["Форма випуску"] = simplify_form(str(row.get("Форма випуску", "")), keywords)
+        else:
+            row["Форма випуску"] = simplify_form_polish(str(row.get("Форма випуску", "")), polish_keywords)
+        data.append(row)
 
-    forms = sorted(set(row["Форма випуску"] for row in data))
-    inns = sorted(set(row["Міжнародне непатентоване найменування"] for row in data if row["Міжнародне непатентоване найменування"]))
-    names = sorted(set(row["Торгівельне найменування"] for row in data if row["Торгівельне найменування"]))
+    # Унікальні значення для фільтрів з не оброблених полів (назва та МНН)
+    names = sorted(set(
+        str(row.get("Торгівельне найменування")).strip()
+        for row in data
+        if isinstance(row.get("Торгівельне найменування"), str) and row.get("Торгівельне найменування").strip()
+    ))
 
-    def get_first_country(row):
-        for i in range(1, 6):
-            key = f"Виробник {i}: країна".strip()
-            val = row.get(key)
-            if val and isinstance(val, str) and val.strip():
-                return val.strip()
-        return None
+    inns = sorted(set(
+        val for val in (
+            str(row.get("Міжнародне непатентоване найменування", "")).strip()
+            for row in data
+      )
+      if val and val != "-" and not val.replace(".", "").isnumeric()
+    ))
 
-    countries = sorted(set(filter(None, (get_first_country(row) for row in data))))
 
-    return render_template("index.html", forms=forms, inns=inns, names=names, countries=countries, guest="user_id" not in session)
+    forms = sorted(set(
+        str(row.get("Форма випуску", "")).strip()
+        for row in data
+        if row.get("Форма випуску")
+    ))
+
+    # Країни — розділяємо, якщо їх кілька в одному рядку
+    countries = sorted(set(
+        country.strip()
+        for row in data
+        for country in str(row.get("Країна виробника", "")).split("\n")
+        if country.strip()
+    ))
+
+
+    print(f"🧬 МНН у фільтрі: {len(inns)} назв, перші 50: {inns[:50]}")
+    print(f"🏷️ Торгівельні назви у фільтрі: {len(names)} назв, перші 50: {names[:50]}")
+
+
+    return render_template(
+        "index.html",
+        forms=forms,
+        inns=inns,
+        names=names,
+        countries=countries,
+        guest="user_id" not in session,
+        source=source
+    )
+
+
+
 
 
 
 
 @app.route("/search", methods=["POST"])
 def search():
-    def get_first_country(row):
-        for i in range(1, 6):
-            key = f"Виробник {i}: країна".strip()
-            val = row.get(key)
-            if val and isinstance(val, str) and val.strip():
-                return val.strip()
-        return "Невідомо"
-
     data = request.get_json()
     name_filter = data.get("name", "").lower()
     form_filter = data.get("form", "")
@@ -143,13 +276,11 @@ def search():
     country_filter = data.get("country", "")
 
     results = []
-    all_data = load_data()
+    source = session.get("source", "ukraine")
+    all_data = load_data(source)
 
     for row in all_data:
-        row["Форма випуску"] = simplify_form(row["Форма випуску"], keywords)
-        row["Країна виробника"] = get_first_country(row)
-
-        if name_filter and name_filter != row["Торгівельне найменування"].lower():
+        if name_filter and name_filter != (row["Торгівельне найменування"] or "").lower():
             continue
         if form_filter and row["Форма випуску"] != form_filter:
             continue
@@ -160,6 +291,7 @@ def search():
 
         results.append(row)
 
+    # Збереження історії (без змін)
     if "user_id" in session:
         try:
             conn = sqlite3.connect("users.db")
@@ -346,56 +478,30 @@ def download_from_drive():
     else:
         raise Exception("❌ Не вдалося завантажити файл з Google Диску. Перевір URL або доступ.")
 
-# 🔁 Завантаження CSV-даних
-def load_data():
-    ensure_file_exists()
-    data = []
-    with open(LOCAL_FILENAME, encoding="cp1251") as f:
-        reader = csv.DictReader(f, delimiter=';')
-        for row in reader:
-            data.append(row)
-    return data
 
 @app.route("/charts")
 def charts():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    all_data = load_data()
+    source = session.get("source", "ukraine")
+    all_data = load_data(source)
 
-    forms = sorted(set(
-        simplify_form(row["Форма випуску"], keywords)
-        for row in all_data
-    ))
+    forms = sorted(set(row["Форма випуску"] for row in all_data))
+    inns = sorted(set(row["Міжнародне непатентоване найменування"] for row in all_data if row["Міжнародне непатентоване найменування"]))
+    countries = sorted(set(row["Країна виробника"] for row in all_data if row["Країна виробника"] and row["Країна виробника"] != "Невідомо"))
 
-    inns = sorted(set(
-        row["Міжнародне непатентоване найменування"]
-        for row in all_data if row["Міжнародне непатентоване найменування"]
-    ))
+    return render_template(
+        "charts.html",
+        forms=forms,
+        inns=inns,
+        countries=countries,
+        preset_form=request.args.get("form"),
+        preset_inn=request.args.get("inn"),
+        preset_country=request.args.get("country"),
+        source=source
+    )
 
-    def get_first_country(row):
-        for i in range(1, 6):
-            val = row.get(f"Виробник {i}: країна")
-            if val and val.strip():
-                return val.strip()
-        return None
-
-    countries = sorted(set(
-        filter(None, (get_first_country(row) for row in all_data))
-    ))
-
-    # Отримання GET-параметрів
-    preset_form = request.args.get("form")
-    preset_inn = request.args.get("inn")
-    preset_country = request.args.get("country")
-
-    return render_template("charts.html",
-                           forms=forms,
-                           inns=inns,
-                           countries=countries,
-                           preset_form=preset_form,
-                           preset_inn=preset_inn,
-                           preset_country=preset_country)
 
 
 
@@ -407,20 +513,14 @@ def chart_data():
     selected_countries = data.get("selected_countries", [])
     chart_type = data.get("chart_type", "bar")
 
-    all_data = load_data()
-
-    def get_first_country(row):
-        for i in range(1, 6):
-            val = row.get(f"Виробник {i}: країна")
-            if val and val.strip():
-                return val.strip()
-        return "Невідомо"
+    source = session.get("source", "ukraine")
+    all_data = load_data(source)
 
     result = {}
 
     for row in all_data:
-        form = simplify_form(row["Форма випуску"], keywords)
-        country = get_first_country(row)
+        form = row["Форма випуску"]
+        country = row["Країна виробника"]
         inn = row["Міжнародне непатентоване найменування"]
 
         if selected_forms and form not in selected_forms:
@@ -430,23 +530,20 @@ def chart_data():
         if selected_countries and country not in selected_countries:
             continue
 
-        # --- ВИЗНАЧАЄМО ЯКУ СТРУКТУРУ ПОВЕРТАТИ ---
         if chart_type in ["pie", "line"]:
             if len(selected_forms) == 1 and not selected_countries:
-                # Форма → країни
                 result[country] = result.get(country, 0) + 1
             elif len(selected_countries) == 1:
-                # Країна → форми
                 result[form] = result.get(form, 0) + 1
             else:
                 return jsonify({})
         else:
-            # Групована bar: форма → країна → кількість
             if form not in result:
                 result[form] = {}
             result[form][country] = result[form].get(country, 0) + 1
 
     return jsonify(result)
+
 
 
 # 🔁 Запуск

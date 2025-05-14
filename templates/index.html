@@ -16,6 +16,14 @@
 </head>
 <body>
     <h2>Пошук лікарських засобів</h2>
+    <form id="sourceForm" method="POST" action="{{ url_for('set_source') }}">
+    <label for="source">Обрати джерело даних:</label>
+    <select name="source" id="source" onchange="this.form.submit()">
+        <option value="ukraine" {% if source == 'ukraine' %}selected{% endif %}>Український реєстр</option>
+        <option value="poland" {% if source == 'poland' %}selected{% endif %}>Польський реєстр</option>
+    </select>
+</form>
+<br>
     <form id="searchForm">
         <label for="name">Назва препарату:</label><br>
         <select id="name" name="name">
@@ -73,7 +81,9 @@
             new TomSelect(`#${id}`, {
                 create: false,
                 maxItems: 1,
-                allowEmptyOption: true
+                allowEmptyOption: true,
+                openOnFocus: true,           // ✨ відкривати список при фокусі
+                maxOptions: 1000  
             });
         });
     </script>
