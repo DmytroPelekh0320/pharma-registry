@@ -99,51 +99,32 @@ def load_data(source="ukraine"):
         else:
             df = polish_data_cache
 
-        total = 0
-        valid_names = 0
-        valid_inns = 0
-
         for row in df.to_dict("records"):
-            total += 1
             name = str(row.get("Nazwa Produktu Leczniczego", "")).strip()
-            inn = str(row.get("Nazwa powszechnie stosowana", "") or "").strip()
-            form_raw = str(row.get("Postać farmaceutyczna", "") or "").strip()
-            country = str(row.get("Kraj wytwórcy", "") or "").strip()
+            inn = str(row.get("Nazwa powszechnie stosowana", "")).strip()
+            form_raw = str(row.get("Postać farmaceutyczna", "")).strip()
+            country_raw = str(row.get("Kraj wytwórcy", "")).strip()
 
+            # Обробка порожніх або недійсних даних
             if not name or name.lower() in ("nan", ""):
                 continue
-            valid_names += 1
-
-            if not inn or inn.lower() in ("-", "nan") or inn.replace(".", "").isnumeric():
+            if inn.lower() in ("nan", ""):
                 inn = "—"
-            else:
-                valid_inns += 1
-
-            if not country or country.lower() in ("nan",):
+            if country_raw.lower() in ("nan", ""):
                 country = "Невідомо"
+            else:
+                country = country_raw.split("\n")[0].strip()
+
+            form = simplify_form_polish(form_raw, polish_keywords)
 
             data.append({
                 "Торгівельне найменування": name,
-                "Форма випуску": simplify_form_polish(form_raw, polish_keywords),
+                "Форма випуску": form,
                 "Міжнародне непатентоване найменування": inn,
                 "Країна виробника": country
             })
 
-        print(f"🔍 Польський реєстр: зчитано рядків: {total}")
-        print(f"✅ Валідні назви: {valid_names}")
-        print(f"✅ Валідні МНН: {valid_inns}")
-        print(f"📦 Завантажено записів: {len(data)}")
-
     return data
-
-
-
-
-
-def clean_country(val):
-    if not isinstance(val, str):
-        return None
-    return val.split('\n')[0].strip()
 
 
 # 🔐 Вхід
@@ -246,11 +227,6 @@ def index():
         if country.strip()
     ))
 
-
-    print(f"🧬 МНН у фільтрі: {len(inns)} назв, перші 50: {inns[:50]}")
-    print(f"🏷️ Торгівельні назви у фільтрі: {len(names)} назв, перші 50: {names[:50]}")
-
-
     return render_template(
         "index.html",
         forms=forms,
@@ -260,10 +236,6 @@ def index():
         guest="user_id" not in session,
         source=source
     )
-
-
-
-
 
 
 
@@ -512,10 +484,62 @@ def chart_data():
     selected_inns = data.get("selected_inns", [])
     selected_countries = data.get("selected_countries", [])
     chart_type = data.get("chart_type", "bar")
+    compare_mode = data.get("compare_mode", False)
 
+    def filter_by_form(records):
+        result = {}
+        for row in records:
+            form = row["Форма випуску"]
+            country = row["Країна виробника"]
+            inn = row["Міжнародне непатентоване найменування"]
+
+            if selected_forms and form not in selected_forms:
+                continue
+            if selected_inns and inn not in selected_inns:
+                continue
+            if selected_countries and country not in selected_countries:
+                continue
+
+            result[form] = result.get(form, 0) + 1
+        return result
+
+    def filter_by_country(records):
+        result = {}
+        for row in records:
+            country = row.get("Країна виробника")
+            form = row["Форма випуску"]
+            inn = row["Міжнародне непатентоване найменування"]
+
+            if selected_forms and form not in selected_forms:
+                continue
+            if selected_inns and inn not in selected_inns:
+                continue
+            if selected_countries and country not in selected_countries:
+                continue
+
+            result[country] = result.get(country, 0) + 1
+        return result
+
+    # 🔹 Порівняння реєстрів
+    if compare_mode == "form":
+        ukraine_data = load_data("ukraine")
+        poland_data = load_data("poland")
+        return jsonify({
+            "Україна": filter_by_form(ukraine_data),
+            "Польща": filter_by_form(poland_data)
+        })
+
+    elif compare_mode == "country":
+        ukraine_data = load_data("ukraine")
+        poland_data = load_data("poland")
+        return jsonify({
+            "Україна": filter_by_country(ukraine_data),
+            "Польща": filter_by_country(poland_data)
+        })
+
+    # 🔹 Звичайний режим (один реєстр)
     source = session.get("source", "ukraine")
     all_data = load_data(source)
-
     result = {}
 
     for row in all_data:
@@ -543,6 +567,7 @@ def chart_data():
             result[form][country] = result[form].get(country, 0) + 1
 
     return jsonify(result)
+
 
 
 
