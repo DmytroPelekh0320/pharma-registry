@@ -515,6 +515,7 @@ def chart_data():
     selected_forms = data.get("selected_forms", [])
     selected_inns = data.get("selected_inns", [])
     selected_countries = data.get("selected_countries", [])
+    selected_atc_groups = data.get("selected_atc_groups", [])
     chart_type = data.get("chart_type", "bar")
     compare_mode = data.get("compare_mode", False)
 
@@ -552,7 +553,7 @@ def chart_data():
             result[country] = result.get(country, 0) + 1
         return result
 
-    # 🔹 Порівняння реєстрів
+    # 🔹 Порівняння між реєстрами
     if compare_mode == "form":
         ukraine_data = load_data("ukraine")
         poland_data = load_data("poland")
@@ -574,6 +575,52 @@ def chart_data():
     all_data = load_data(source)
     result = {}
 
+    # 🔹 Якщо вибрано ATC-групу — будуємо по повних ATC-кодах (з фільтрами або без)
+    if selected_atc_groups:
+        for row in all_data:
+            full_atc = row.get("ATC", "")
+            short_atc = row.get("ATC_group", "")
+            form = row["Форма випуску"]
+            country = row["Країна виробника"]
+            inn = row["Міжнародне непатентоване найменування"]
+
+            if short_atc not in selected_atc_groups:
+                continue
+            if selected_forms and form not in selected_forms:
+                continue
+            if selected_inns and inn not in selected_inns:
+                continue
+            if selected_countries and country not in selected_countries:
+                continue
+            if not full_atc:
+                continue
+
+            result[full_atc] = result.get(full_atc, 0) + 1
+
+        return jsonify(result)
+
+    # 🔹 Кругова або лінійна діаграма (без ATC)
+    if chart_type in ["pie", "line"]:
+        for row in all_data:
+            form = row["Форма випуску"]
+            country = row["Країна виробника"]
+            inn = row["Міжнародне непатентоване найменування"]
+
+            if selected_forms and form not in selected_forms:
+                continue
+            if selected_inns and inn not in selected_inns:
+                continue
+            if selected_countries and country not in selected_countries:
+                continue
+
+            if len(selected_forms) == 1 and not selected_countries:
+                result[country] = result.get(country, 0) + 1
+            elif len(selected_countries) == 1:
+                result[form] = result.get(form, 0) + 1
+
+        return jsonify(result)
+
+    # 🔹 Стовпчаста: форма → країна → кількість (без ATC)
     for row in all_data:
         form = row["Форма випуску"]
         country = row["Країна виробника"]
@@ -586,21 +633,11 @@ def chart_data():
         if selected_countries and country not in selected_countries:
             continue
 
-        if chart_type in ["pie", "line"]:
-            if len(selected_forms) == 1 and not selected_countries:
-                result[country] = result.get(country, 0) + 1
-            elif len(selected_countries) == 1:
-                result[form] = result.get(form, 0) + 1
-            else:
-                return jsonify({})
-        else:
-            if form not in result:
-                result[form] = {}
-            result[form][country] = result[form].get(country, 0) + 1
+        if form not in result:
+            result[form] = {}
+        result[form][country] = result[form].get(country, 0) + 1
 
     return jsonify(result)
-
-
 
 
 # 🔁 Запуск

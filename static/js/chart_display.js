@@ -49,10 +49,12 @@ async function fetchDataAndRenderChart(type = "bar", compare = false) {
     const formSelect = document.getElementById("formSelect");
     const innSelect = document.getElementById("innSelect");
     const countrySelect = document.getElementById("countrySelect");
+    const atcSelect = document.getElementById("atcGroupSelect");
 
     const selectedForms = Array.from(formSelect.selectedOptions).map(opt => opt.value);
     const selectedInns = Array.from(innSelect.selectedOptions).map(opt => opt.value);
     const selectedCountries = Array.from(countrySelect.selectedOptions).map(opt => opt.value);
+    const selectedAtcGroups = Array.from(atcSelect.selectedOptions).map(opt => opt.value);
 
     const response = await fetch("/chart-data", {
         method: "POST",
@@ -61,16 +63,35 @@ async function fetchDataAndRenderChart(type = "bar", compare = false) {
             selected_forms: selectedForms,
             selected_inns: selectedInns,
             selected_countries: selectedCountries,
+            selected_atc_groups: selectedAtcGroups,
             chart_type: type,
             compare_mode: compare
         })
     });
 
     const data = await response.json();
-    console.log("Отримано дані від сервера:", data);
-
     const ctx = document.getElementById("releaseChart").getContext("2d");
     if (chartInstance) chartInstance.destroy();
+
+        // 🔹 Якщо обрано ATC-групу — малюємо по повних ATC-кодах
+    if (selectedAtcGroups.length > 0 && Object.keys(data).length > 0) {
+        const labels = Object.keys(data);
+        const values = Object.values(data);
+
+        chartInstance = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Повні ATC-коди",
+                    data: values,
+                    backgroundColor: labels.map((_, i) => getColor(i))
+                }]
+            },
+            options: getOptions(false)
+        });
+        return;
+    }
 
     // 🔹 Порівняння за формами
     if (compare === "form" && type === "bar") {
@@ -121,31 +142,31 @@ async function fetchDataAndRenderChart(type = "bar", compare = false) {
         const poland = {};
 
         for (const [country, count] of Object.entries(data["Україна"])) {
-        const unified = unifyCountryName(country, "ukraine");
-        ukraine[unified] = count;
-        allCountriesSet.add(unified);
-       }
+            const unified = unifyCountryName(country, "ukraine");
+            ukraine[unified] = count;
+            allCountriesSet.add(unified);
+        }
 
         for (const [country, count] of Object.entries(data["Польща"])) {
-        const unified = unifyCountryName(country, "poland");
-        poland[unified] = count;
-        allCountriesSet.add(unified);
+            const unified = unifyCountryName(country, "poland");
+            poland[unified] = count;
+            allCountriesSet.add(unified);
         }
 
         const allCountries = Array.from(allCountriesSet);
 
-         const datasets = [
-        {
-            label: "Україна",
-            data: allCountries.map(c => ukraine[c] || 0),
-            backgroundColor: getColor(0)
-        },
-        {
-            label: "Польща",
-            data: allCountries.map(c => poland[c] || 0),
-            backgroundColor: getColor(1)
-        }
-      ];
+        const datasets = [
+            {
+                label: "Україна",
+                data: allCountries.map(c => ukraine[c] || 0),
+                backgroundColor: getColor(0)
+            },
+            {
+                label: "Польща",
+                data: allCountries.map(c => poland[c] || 0),
+                backgroundColor: getColor(1)
+            }
+        ];
 
         chartInstance = new Chart(ctx, {
             type: "bar",
@@ -158,7 +179,7 @@ async function fetchDataAndRenderChart(type = "bar", compare = false) {
         return;
     }
 
-    // 🔹 Стандартні режими
+    // 🔹 Стовпчикова діаграма за формами/країнами
     if (type === "bar") {
         const allForms = Object.keys(data);
         const allCountries = Array.from(new Set(
@@ -182,6 +203,7 @@ async function fetchDataAndRenderChart(type = "bar", compare = false) {
         return;
     }
 
+    // 🔹 Кругова або лінійна діаграма
     if (selectedForms.length === 1 && selectedCountries.length !== 1) {
         const labels = Object.keys(data);
         const values = Object.values(data);
@@ -222,6 +244,7 @@ async function fetchDataAndRenderChart(type = "bar", compare = false) {
 
     showAlert("Щоб побудувати кругову або лінійну діаграму, виберіть лише одну форму або одну країну.");
 }
+
 
 function getOptions(enableLegend = true) {
     return {
@@ -299,6 +322,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const innSelector = document.getElementById("innSelect");
     const countrySelector = document.getElementById("countrySelect");
     const saveBtn = document.getElementById("saveChartBtn");
+    const atcSelect = document.getElementById("atcGroupSelect");
+
 
     function render() {
         const formActive = document.getElementById("compareFormBtn")?.classList.contains("active");
@@ -311,6 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
     formSelector.addEventListener("change", render);
     innSelector.addEventListener("change", render);
     countrySelector.addEventListener("change", render);
+    atcSelect.addEventListener("change", render);
     saveBtn.addEventListener("click", saveChartAsImage);
 
     render();
