@@ -3,7 +3,8 @@ async function performSearch() {
         name: document.getElementById("name").value,
         form: document.getElementById("form").value,
         inn: document.getElementById("inn").value,
-        country: document.getElementById("country").value
+        country: document.getElementById("country").value,
+        atc: document.getElementById("atc").value
     };
 
     try {
@@ -35,7 +36,7 @@ function renderResults(results) {
     table.border = "1";
 
     const headerRow = table.insertRow();
-    ["#", "Назва", "Форма", "МНН", "Країна"].forEach(header => {
+    ["#", "Назва", "Форма", "МНН", "Країна", "ATC"].forEach(header => {
         const th = document.createElement("th");
         th.textContent = header;
         headerRow.appendChild(th);
@@ -48,6 +49,7 @@ function renderResults(results) {
         row.insertCell().textContent = item["Форма випуску"];
         row.insertCell().textContent = item["Міжнародне непатентоване найменування"] || "—";
         row.insertCell().textContent = item["Країна виробника"] || "—";
+        row.insertCell().textContent = item["ATC"] || "—";
     });
 
     container.appendChild(table);

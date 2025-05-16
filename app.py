@@ -74,11 +74,19 @@ def load_data(source="ukraine"):
                     if val and val.strip():
                         country = val.strip()
                         break
+                atc_full = row.get("Код АТС 1", "").strip()
+                atc_short = atc_full[:4] if atc_full else ""
+                if atc_full.lower() in ("nan", ""):
+                    atc_full = ""
+                if atc_short.lower() in ("nan", ""):
+                    atc_short = ""  
                 data.append({
                     "Торгівельне найменування": row.get("Торгівельне найменування", "").strip(),
                     "Форма випуску": form,
                     "Міжнародне непатентоване найменування": row.get("Міжнародне непатентоване найменування", "").strip(),
-                    "Країна виробника": country or "Невідомо"
+                    "Країна виробника": country or "Невідомо",
+                    "ATC": atc_full,
+                    "ATC_group": atc_short
                 })
 
     elif source == "poland":
@@ -92,7 +100,8 @@ def load_data(source="ukraine"):
                     "Nazwa Produktu Leczniczego",
                     "Postać farmaceutyczna",
                     "Nazwa powszechnie stosowana",
-                    "Kraj wytwórcy"
+                    "Kraj wytwórcy",
+                    "Kod ATC"
                 ]
             )
             polish_data_cache = df.copy()
@@ -104,6 +113,13 @@ def load_data(source="ukraine"):
             inn = str(row.get("Nazwa powszechnie stosowana", "")).strip()
             form_raw = str(row.get("Postać farmaceutyczna", "")).strip()
             country_raw = str(row.get("Kraj wytwórcy", "")).strip()
+
+            atc_full = str(row.get("Kod ATC", "")).strip()
+            atc_short = atc_full[:4] if atc_full else ""
+            if atc_full.lower() in ("nan", ""):
+                atc_full = ""
+            if atc_short.lower() in ("nan", ""):
+                atc_short = ""
 
             # Обробка порожніх або недійсних даних
             if not name or name.lower() in ("nan", ""):
@@ -121,7 +137,9 @@ def load_data(source="ukraine"):
                 "Торгівельне найменування": name,
                 "Форма випуску": form,
                 "Міжнародне непатентоване найменування": inn,
-                "Країна виробника": country
+                "Країна виробника": country,
+                "ATC": atc_full,
+                "ATC_group": atc_short
             })
 
     return data
@@ -212,7 +230,6 @@ def index():
       if val and val != "-" and not val.replace(".", "").isnumeric()
     ))
 
-
     forms = sorted(set(
         str(row.get("Форма випуску", "")).strip()
         for row in data
@@ -227,12 +244,19 @@ def index():
         if country.strip()
     ))
 
+    atc_codes = sorted(set(
+      row.get("ATC_group", "").strip()
+      for row in data
+      if row.get("ATC_group")
+    ))
+
     return render_template(
         "index.html",
         forms=forms,
         inns=inns,
         names=names,
         countries=countries,
+        atc_codes=atc_codes,
         guest="user_id" not in session,
         source=source
     )
@@ -246,6 +270,7 @@ def search():
     form_filter = data.get("form", "")
     inn_filter = data.get("inn", "")
     country_filter = data.get("country", "")
+    atc_filter = data.get("atc", "")
 
     results = []
     source = session.get("source", "ukraine")
@@ -260,6 +285,8 @@ def search():
             continue
         if country_filter and row["Країна виробника"] != country_filter:
             continue
+        if atc_filter and row.get("ATC_group") != atc_filter:
+            continue
 
         results.append(row)
 
@@ -270,8 +297,8 @@ def search():
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO query_history (
-                    user_id, timestamp, name_filter, form_filter, inn_filter, country_filter, result_count, results_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                  user_id, timestamp, name_filter, form_filter, inn_filter, country_filter, atc_filter, result_count, results_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 session["user_id"],
                 datetime.now().isoformat(),
@@ -279,6 +306,7 @@ def search():
                 form_filter or None,
                 inn_filter or None,
                 country_filter or None,
+                atc_filter or None,
                 len(results),
                 json.dumps(results, ensure_ascii=False)
             ))
@@ -336,7 +364,7 @@ def history():
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT id, timestamp, name_filter, form_filter, inn_filter, country_filter, result_count, results_json
+        SELECT id, timestamp, name_filter, form_filter, inn_filter, country_filter, atc_filter, result_count, results_json
         FROM query_history
         WHERE user_id = ?
         ORDER BY timestamp DESC
@@ -354,13 +382,12 @@ def history():
             "form_filter": row[3],
             "inn_filter": row[4],
             "country_filter": row[5],
-            "result_count": row[6],
-            "results": json.loads(row[7] or "[]")
+            "atc_filter": row[6],
+            "result_count": row[7],
+            "results": json.loads(row[8] or "[]")
         })
 
     return render_template("history.html", records=records)
-
-
 
 
 @app.route("/download/<int:record_id>")
@@ -387,7 +414,8 @@ def download(record_id):
         "Торгівельне найменування",
         "Форма випуску",
         "Міжнародне непатентоване найменування",
-        "Країна виробника"
+        "Країна виробника",
+        "ATC"
     ])
     writer.writeheader()
     for item in results:
@@ -395,7 +423,8 @@ def download(record_id):
             "Торгівельне найменування": item.get("Торгівельне найменування", ""),
             "Форма випуску": item.get("Форма випуску", ""),
             "Міжнародне непатентоване найменування": item.get("Міжнародне непатентоване найменування", ""),
-            "Країна виробника": item.get("Країна виробника", "")
+            "Країна виробника": item.get("Країна виробника", ""),
+            "ATC": item.get("ATC", "")
         })
 
     output.seek(0)
@@ -420,9 +449,9 @@ def save_results():
         return f"Помилка обробки даних: {str(e)}", 400
 
     bom = '\ufeff'
-    csv_content = bom + "Торгівельне найменування,Форма випуску,МНН,Країна виробника\n"
+    csv_content = bom + "Торгівельне найменування,Форма випуску,МНН,Країна виробника,ATC\n"
     for row in records:
-        csv_content += f"{row.get('Торгівельне найменування','')},{row.get('Форма випуску','')},{row.get('Міжнародне непатентоване найменування','')},{row.get('Країна виробника','')}\n"
+        csv_content += f"{row.get('Торгівельне найменування','')},{row.get('Форма випуску','')},{row.get('Міжнародне непатентоване найменування','')},{row.get('Країна виробника','')},{row.get('ATC','')}\n"
 
     response = make_response(csv_content)
     response.headers["Content-Disposition"] = "attachment; filename=result.csv"
@@ -462,15 +491,18 @@ def charts():
     forms = sorted(set(row["Форма випуску"] for row in all_data))
     inns = sorted(set(row["Міжнародне непатентоване найменування"] for row in all_data if row["Міжнародне непатентоване найменування"]))
     countries = sorted(set(row["Країна виробника"] for row in all_data if row["Країна виробника"] and row["Країна виробника"] != "Невідомо"))
+    atc_groups = sorted(set(row.get("ATC", "")[:4] for row in all_data if row.get("ATC") and len(row.get("ATC", "")) >= 4))
 
     return render_template(
         "charts.html",
         forms=forms,
         inns=inns,
         countries=countries,
+        atc_groups=atc_groups,
         preset_form=request.args.get("form"),
         preset_inn=request.args.get("inn"),
         preset_country=request.args.get("country"),
+        preset_atc=request.args.get("atc"),
         source=source
     )
 

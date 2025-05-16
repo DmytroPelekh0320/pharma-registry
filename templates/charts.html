@@ -14,6 +14,7 @@
         window.presetForm = "{{ preset_form or '' }}";
         window.presetInn = "{{ preset_inn or '' }}";
         window.presetCountry = "{{ preset_country or '' }}";
+        window.presetAtc = "{{ preset_atc or '' }}";
     </script>
 
     <!-- Ініціалізація селекторів та автопідстановка -->
@@ -64,6 +65,15 @@
         {% endfor %}
     </select>
 
+    <br><br>
+    <label for="atcGroupSelect">Оберіть ATC-групу (перші 4 символи):</label><br>
+    <select id="atcGroupSelect" multiple>
+        {% for a in atc_groups %}
+            <option value="{{ a }}">{{ a }}</option>
+        {% endfor %}
+    </select>
+
+    <br><br>
     <br><br>
     <div id="alertBox" style="display:none; padding:10px; background-color:#fde047; color:#000; border:1px solid #facc15; border-radius:6px; margin-bottom:15px;"></div>
     <canvas id="releaseChart" width="800" height="400"></canvas>

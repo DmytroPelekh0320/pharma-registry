@@ -57,6 +57,14 @@
             {% endfor %}
         </select><br><br>
 
+        <label for="atc">ATC-група (4 символи):</label><br>
+        <select id="atc" name="atc">
+            <option value="">Усі</option>
+            {% for a in atc_codes %}
+                <option value="{{ a }}">{{ a }}</option>
+            {% endfor %}
+        </select><br><br>
+
         <button type="submit">Пошук</button>
     </form>
 
@@ -77,13 +85,13 @@
     <script src="{{ url_for('static', filename='js/search.js') }}"></script>
     <script>
         // ініціалізація Tom Select
-        ["name", "form", "inn", "country"].forEach(id => {
+        ["name", "form", "inn", "country", "atc"].forEach(id => {
             new TomSelect(`#${id}`, {
                 create: false,
                 maxItems: 1,
                 allowEmptyOption: true,
-                openOnFocus: true,           // ✨ відкривати список при фокусі
-                maxOptions: 1000  
+                openOnFocus: true,
+                maxOptions: 1000
             });
         });
     </script>

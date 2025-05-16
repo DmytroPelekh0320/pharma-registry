@@ -14,6 +14,7 @@
             <th>Форма</th>
             <th>МНН</th>
             <th>Країна</th>
+            <th>ATC</th>
             <th>Кількість</th>
             <th>Дії</th>
         </tr>
@@ -24,17 +25,19 @@
             <td>{{ record.form_filter or "—" }}</td>
             <td>{{ record.inn_filter or "—" }}</td>
             <td>{{ record.country_filter or "—" }}</td>
+            <td>{{ record.atc_filter or "—" }}</td>
             <td>{{ record.result_count }}</td>
             <td>
                 <button onclick="toggleDetails('row{{ loop.index }}')">Показати</button> |
                 <a href="{{ url_for('charts',
                                     form=record.form_filter if record.form_filter else None,
                                     inn=record.inn_filter if record.inn_filter else None,
-                                    country=record.country_filter if record.country_filter else None) }}">Побудувати графік</a>
+                                    country=record.country_filter if record.country_filter else None,
+                                    atc=record.atc_filter if record.atc_filter else None) }}">Побудувати графік</a>
             </td>
         </tr>
         <tr id="row{{ loop.index }}" style="display: none;">
-            <td colspan="7">
+            <td colspan="8">
                 {% if record.results and record.results|length > 0 %}
                     <table border="1" style="margin-top: 10px;">
                         <tr>
@@ -43,6 +46,7 @@
                             <th>Форма</th>
                             <th>МНН</th>
                             <th>Країна</th>
+                            <th>ATC</th>
                         </tr>
                         {% for item in record.results %}
                         <tr>
@@ -51,6 +55,7 @@
                             <td>{{ item.get("Форма випуску", "—") }}</td>
                             <td>{{ item.get("Міжнародне непатентоване найменування", "—") }}</td>
                             <td>{{ item.get("Країна виробника", "—") }}</td>
+                            <td>{{ item.get("ATC", "—") }}</td>
                         </tr>
                         {% endfor %}
                     </table>
@@ -67,6 +72,7 @@
     <br>
     <a href="{{ url_for('index') }}">Повернутися до пошуку</a>
 
+    <!-- Підключення скрипта -->
     <script src="{{ url_for('static', filename='js/toggle.js') }}"></script>
 </body>
 </html>
