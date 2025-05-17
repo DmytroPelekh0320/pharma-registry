@@ -2,21 +2,27 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <title>Реєстрація</title>
 </head>
 <body>
-    <h2>Реєстрація нового користувача</h2>
+    <div class="login-container">
+        <h2>Реєстрація нового користувача</h2>
 
-    <form method="post">
-        <label for="username">Email:</label><br>
-        <input type="email" name="username" required><br><br>
+        <form method="post">
+            <label for="username">Email:</label>
+            <input type="email" name="username" required>
 
-        <label for="password">Пароль:</label><br>
-        <input type="password" name="password" required><br><br>
+            <label for="password">Пароль:</label>
+            <input type="password" name="password" required>
 
-        <button type="submit">Зареєструватися</button>
-    </form>
+            <button type="submit">Зареєструватися</button>
+        </form>
 
-    <p>Вже маєш акаунт? <a href="{{ url_for('login') }}">Увійти</a></p>
+        <p style="text-align: center; margin-top: 15px;">
+            Вже маєш акаунт? <a href="{{ url_for('login') }}">Увійти</a>
+        </p>
+    </div>
 </body>
+
 </html>

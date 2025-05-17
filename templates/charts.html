@@ -33,45 +33,54 @@
     <h2>Графіки</h2>
     <button id="compareFormBtn" style="background-color:#0ea5e9;color:white;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;">Порівняти реєстри за формою випуску</button>
     <button id="compareCountryBtn" style="background-color:#0ea5e9;color:white;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;">Порівняти реєстри за країнами</button>
+    <button id="compareAtcBtn" style="background-color:#0ea5e9;color:white;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;">Порівняти реєстри за ATC</button>
+
     <br><br>
+    <div id="chartTypeWrapper">
     <label for="chartType">Тип графіка:</label>
     <select id="chartType">
         <option value="bar">Стовпчастий</option>
         <option value="pie">Круговий</option>
         <option value="line">Лінійний</option>
     </select>
-
-    <br><br>
+    </div>
+ <br><br>
+  <div class="filter-group" id="formWrapper">
     <label for="formSelect">Оберіть форми випуску:</label><br>
     <select id="formSelect" multiple>
         {% for form in forms %}
             <option value="{{ form }}">{{ form }}</option>
         {% endfor %}
     </select>
-
-    <br><br>
+</div>
+ <br><br>
+<div class="filter-group" id="innWrapper">
     <label for="innSelect">Оберіть МНН:</label><br>
     <select id="innSelect" multiple>
         {% for inn in inns %}
             <option value="{{ inn }}">{{ inn }}</option>
         {% endfor %}
     </select>
-
-    <br><br>
+</div>
+ <br><br>
+<div class="filter-group" id="countryWrapper">
     <label for="countrySelect">Оберіть країни виробника:</label><br>
     <select id="countrySelect" multiple>
         {% for country in countries %}
             <option value="{{ country }}">{{ country }}</option>
         {% endfor %}
     </select>
-
-    <br><br>
+</div>
+ <br><br>
+<div class="filter-group" id="atcWrapper">
     <label for="atcGroupSelect">Оберіть ATC-групу (перші 4 символи):</label><br>
     <select id="atcGroupSelect" multiple>
         {% for a in atc_groups %}
             <option value="{{ a }}">{{ a }}</option>
         {% endfor %}
     </select>
+</div>
+    <br><br
 
     <br><br>
     <br><br>

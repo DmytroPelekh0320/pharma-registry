@@ -1,6 +1,20 @@
-<h2>Підтвердження входу</h2>
-<form method="post">
-    <label>Введіть код, надісланий на вашу пошту:</label><br>
-    <input type="text" name="code" required><br>
-    <button type="submit">Підтвердити</button>
-</form>
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Підтвердження входу</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="login-container">
+        <h2>Підтвердження входу</h2>
+
+        <form method="post">
+            <label for="code">Введіть код, надісланий на вашу пошту:</label>
+            <input type="text" name="code" required>
+
+            <button type="submit">Підтвердити</button>
+        </form>
+    </div>
+</body>
+</html>

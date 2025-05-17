@@ -519,7 +519,7 @@ def chart_data():
     chart_type = data.get("chart_type", "bar")
     compare_mode = data.get("compare_mode", False)
 
-    def filter_by_form(records):
+    def filter_by_form(records, source):
         result = {}
         for row in records:
             form = row["Форма випуску"]
@@ -536,10 +536,11 @@ def chart_data():
             result[form] = result.get(form, 0) + 1
         return result
 
-    def filter_by_country(records):
+
+    def filter_by_country(records, source):
         result = {}
         for row in records:
-            country = row.get("Країна виробника")
+            country = unify_country_name_backend(row.get("Країна виробника", ""), source)
             form = row["Форма випуску"]
             inn = row["Міжнародне непатентоване найменування"]
 
@@ -557,18 +558,40 @@ def chart_data():
     if compare_mode == "form":
         ukraine_data = load_data("ukraine")
         poland_data = load_data("poland")
+        for row in poland_data:
+            row["Форма випуску"] = translate_form_name(row["Форма випуску"])
         return jsonify({
-            "Україна": filter_by_form(ukraine_data),
-            "Польща": filter_by_form(poland_data)
+            "Україна": filter_by_form(ukraine_data, source="ukraine"),
+            "Польща": filter_by_form(poland_data, source="poland")
         })
 
     elif compare_mode == "country":
         ukraine_data = load_data("ukraine")
         poland_data = load_data("poland")
         return jsonify({
-            "Україна": filter_by_country(ukraine_data),
-            "Польща": filter_by_country(poland_data)
+            "Україна": filter_by_country(ukraine_data, source="ukraine"),
+            "Польща": filter_by_country(poland_data, source="poland")
         })
+    elif compare_mode == "atc":
+        ukraine_data = load_data("ukraine")
+        poland_data = load_data("poland")
+        ukraine_result = {}
+        poland_result = {}
+
+        for row in ukraine_data:
+            atc = row.get("ATC", "")
+            short = atc[:4]
+            if short in selected_atc_groups and atc:
+                ukraine_result[atc] = ukraine_result.get(atc, 0) + 1
+
+        for row in poland_data:
+            atc = row.get("ATC", "")
+            short = atc[:4]
+            if short in selected_atc_groups and atc:
+                poland_result[atc] = poland_result.get(atc, 0) + 1
+
+        return jsonify({"Україна": ukraine_result, "Польща": poland_result})
+
 
     # 🔹 Звичайний режим (один реєстр)
     source = session.get("source", "ukraine")
@@ -638,6 +661,35 @@ def chart_data():
         result[form][country] = result[form].get(country, 0) + 1
 
     return jsonify(result)
+
+def translate_form_name(name):
+    translation_map = {
+        "Aerozol": "Аерозоль", "Balsam": "Бальзам", "Gaz": "Газ", "Żel": "Гель",
+        "Granulat": "Гранули", "Drażetki": "Драже", "Ekstrakt": "Екстракт", "Emulsja": "Емульсія",
+        "Tabletki": "Таблетки", "Kapsułki": "Капсули", "Maść": "Мазь", "Syrop": "Сироп",
+        "Krople": "Краплі", "Roztwór": "Розчин", "Zawiesina": "Суспензія", "Pasta": "Паста",
+        "Płyn": "Рідина", "Liofilizat": "Ліофілізат", "Czopki": "Супозиторії", "Spray": "Спрей",
+        "Substancja": "Субстанція", "Implant": "Підшкірні імплантати", "Plaster": "Пластир",
+        "Szampon": "Шампунь", "Koncentrat": "Концентрат", "Proszek": "Порошок", "Zioła": "Трава",
+        "Globulki": "Песарії", "Pastylki": "Пастилки"
+    }
+    return translation_map.get(name, name)
+
+def unify_country_name_backend(name, source):
+    if source == "ukraine":
+        return name
+    translation_map = {
+        "Australia": "Австралія", "Austria": "Австрія", "Belgia": "Бельгія", "Bułgaria": "Болгарія",
+        "Chorwacja": "Хорватія", "Cypr": "Кіпр", "Czechy": "Чехія", "Dania": "Данія", "Estonia": "Естонія",
+        "Finlandia": "Фінляндія", "Francja": "Франція", "Grecja": "Греція", "Hiszpania": "Іспанія",
+        "Holandia": "Нідерланди", "Indie": "Індія", "Irlandia": "Ірландія", "Irlandia Północna": "Північна Ірландія",
+        "Islandia": "Ісландія", "Litwa": "Литва", "Malta": "Мальта", "Niemcy": "Німеччина",
+        "Norwegia": "Норвегія", "Polska": "Польща", "Portugalia": "Португалія", "Rumunia": "Румунія",
+        "Szwajcaria": "Швейцарія", "Szwecja": "Швеція", "Słowacja": "Словаччина", "Słowenia": "Словенія",
+        "Wielka Brytania": "Велика Британія", "Węgry": "Угорщина", "Włochy": "Італія", "Łotwa": "Латвія",
+        "Невідомо": "Невідомо"
+    }
+    return translation_map.get(name, name)
 
 
 # 🔁 Запуск
