@@ -462,34 +462,35 @@ function setupCompareButtons() {
         document.getElementById("chartTypeWrapper").style.display = "block";
     }
 
-    function hideAllFiltersExceptForm() {
-        document.getElementById("formWrapper").style.display = "block";
-        document.getElementById("innWrapper").style.display = "none";
-        document.getElementById("countryWrapper").style.display = "none";
-        document.getElementById("atcWrapper").style.display = "none";
-    }
 
-    function hideAllFiltersExceptCountry() {
-        document.getElementById("formWrapper").style.display = "none";
-        document.getElementById("innWrapper").style.display = "none";
-        document.getElementById("countryWrapper").style.display = "block";
-        document.getElementById("atcWrapper").style.display = "none";
-    }
+   function hideAllFiltersExceptForm() {
+    safeDisplay("formWrapper", true);
+    safeDisplay("innWrapper", false);
+    safeDisplay("countryWrapper", false);
+    safeDisplay("atcWrapper", false);
+}
+
+function hideAllFiltersExceptCountry() {
+    safeDisplay("formWrapper", false);
+    safeDisplay("innWrapper", false);
+    safeDisplay("countryWrapper", true);
+    safeDisplay("atcWrapper", false);
+}
 
     function hideAllFiltersExceptATC() {
-        document.getElementById("formWrapper").style.display = "none";
-        document.getElementById("innWrapper").style.display = "none";
-        document.getElementById("countryWrapper").style.display = "none";
-        document.getElementById("atcWrapper").style.display = "block";
-    }
+    safeDisplay("formWrapper", false);
+    safeDisplay("innWrapper", false);
+    safeDisplay("countryWrapper", false);
+    safeDisplay("atcWrapper", true);
+}
 }
 
 function showAllFilters() {
-        document.getElementById("formWrapper").style.display = "block";
-        document.getElementById("innWrapper").style.display = "block";
-        document.getElementById("countryWrapper").style.display = "block";
-        document.getElementById("atcWrapper").style.display = "block";
-    }
+    safeDisplay("formWrapper", true);
+    safeDisplay("innWrapper", true);
+    safeDisplay("countryWrapper", true);
+    safeDisplay("atcWrapper", true);
+}
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -523,11 +524,21 @@ document.addEventListener("DOMContentLoaded", () => {
     render();
 });
 
-
 function hideChartTypeSelector() {
-    document.getElementById("chartTypeWrapper").style.display = "none";
+    const el = document.getElementById("chartTypeWrapper");
+    if (el) {
+        el.style.display = "none";
+    }
 }
 
 function showChartTypeSelector() {
-    document.getElementById("chartTypeWrapper").style.display = "block";
+    const el = document.getElementById("chartTypeWrapper");
+    if (el) {
+        el.style.display = "block";
+    }
+}
+
+function safeDisplay(id, visible) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = visible ? "block" : "none";
 }

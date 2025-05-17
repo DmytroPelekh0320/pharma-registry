@@ -3,97 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <title>Пошук лікарських засобів</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 
     <!-- Tom Select -->
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
-
-    <style>
-        select {
-            width: 400px;
-        }
-    </style>
 </head>
 <body>
-    <h2>Пошук лікарських засобів</h2>
-    <form id="sourceForm" method="POST" action="{{ url_for('set_source') }}">
-    <label for="source">Обрати джерело даних:</label>
-    <select name="source" id="source" onchange="this.form.submit()">
-        <option value="ukraine" {% if source == 'ukraine' %}selected{% endif %}>Український реєстр</option>
-        <option value="poland" {% if source == 'poland' %}selected{% endif %}>Польський реєстр</option>
-    </select>
-</form>
-<br>
-    <form id="searchForm">
-        <label for="name">Назва препарату:</label><br>
-        <select id="name" name="name">
-            <option value="">Усі</option>
-            {% for n in names %}
-                <option value="{{ n }}">{{ n }}</option>
-            {% endfor %}
-        </select><br><br>
+<div class="main-container">
+    <div class="search-container">
+        <h2>Пошук лікарських засобів</h2>
 
-        <label for="form">Форма випуску:</label><br>
-        <select id="form" name="form">
-            <option value="">Усі</option>
-            {% for f in forms %}
-                <option value="{{ f }}">{{ f }}</option>
-            {% endfor %}
-        </select><br><br>
-
-        <label for="inn">МНН:</label><br>
-        <select id="inn" name="inn">
-            <option value="">Усі</option>
-            {% for i in inns %}
-                <option value="{{ i }}">{{ i }}</option>
-            {% endfor %}
-        </select><br><br>
-
-        <label for="country">Країна виробника:</label><br>
-        <select id="country" name="country">
-            <option value="">Усі</option>
-            {% for c in countries %}
-                <option value="{{ c }}">{{ c }}</option>
-            {% endfor %}
-        </select><br><br>
-
-        <label for="atc">ATC-група (4 символи):</label><br>
-        <select id="atc" name="atc">
-            <option value="">Усі</option>
-            {% for a in atc_codes %}
-                <option value="{{ a }}">{{ a }}</option>
-            {% endfor %}
-        </select><br><br>
-
-        <button type="submit">Пошук</button>
-    </form>
-
-    <div id="results"></div>
-
-    {% if not guest %}
-        <a href="{{ url_for('charts') }}">Перейти до графіків</a><br><br>
-        <form id="saveForm" action="{{ url_for('save_results') }}" method="post">
-            <input type="hidden" name="results" id="resultsInput">
-            <button type="submit">Зберегти результати</button>
+        <form id="sourceForm" method="POST" action="{{ url_for('set_source') }}" class="form-box">
+            <label for="source">Обрати джерело даних:</label>
+            <select name="source" id="source" onchange="this.form.submit()">
+                <option value="ukraine" {% if source == 'ukraine' %}selected{% endif %}>Український реєстр</option>
+                <option value="poland" {% if source == 'poland' %}selected{% endif %}>Польський реєстр</option>
+            </select>
         </form>
-        <a href="{{ url_for('history') }}">Переглянути історію</a>
-    {% else %}
-        <button disabled>Зберегти результати (доступно після входу)</button>
-    {% endif %}
 
-    <!-- Скрипти -->
-    <script src="{{ url_for('static', filename='js/search.js') }}"></script>
-    <script>
-        // ініціалізація Tom Select
-        ["name", "form", "inn", "country", "atc"].forEach(id => {
-            new TomSelect(`#${id}`, {
-                create: false,
-                maxItems: 1,
-                allowEmptyOption: true,
-                openOnFocus: true,
-                maxOptions: 1000
-            });
+        <form id="searchForm" class="form-box">
+            <div class="search-grid">
+                <div class="form-group">
+                    <label for="name">Назва препарату:</label>
+                    <select id="name" name="name">
+                        <option value="">Усі</option>
+                        {% for n in names %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="form">Форма випуску:</label>
+                    <select id="form" name="form">
+                        <option value="">Усі</option>
+                        {% for f in forms %}<option value="{{ f }}">{{ f }}</option>{% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="inn">МНН:</label>
+                    <select id="inn" name="inn">
+                        <option value="">Усі</option>
+                        {% for i in inns %}<option value="{{ i }}">{{ i }}</option>{% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="country">Країна виробника:</label>
+                    <select id="country" name="country">
+                        <option value="">Усі</option>
+                        {% for c in countries %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="atc">ATC-група (4 символи):</label>
+                    <select id="atc" name="atc">
+                        <option value="">Усі</option>
+                        {% for a in atc_codes %}<option value="{{ a }}">{{ a }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="search-actions">
+                <button type="submit">Пошук</button>
+            </div>
+        </form>
+
+        <div id="results" class="results-box"></div>
+
+        {% if not guest %}
+            <h3>Додаткові функції</h3>
+            <form id="saveForm" action="{{ url_for('save_results') }}" method="post" class="form-box">
+                <input type="hidden" name="results" id="resultsInput">
+                <button type="submit">Зберегти результати</button>
+            </form>
+            <div class="link-group">
+                <a class="link-button" href="{{ url_for('charts') }}">Графіки</a>
+                <a class="link-button" href="{{ url_for('history') }}">Переглянути історію</a>
+            </div>
+        {% else %}
+            <button class="disabled" disabled>Зберегти результати (доступно після входу)</button>
+        {% endif %}
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+<script>
+    ["name", "form", "inn", "country", "atc"].forEach(id => {
+        new TomSelect(`#${id}`, {
+            create: false,
+            maxItems: 1,
+            allowEmptyOption: true,
+            openOnFocus: true,
+            maxOptions: 1000
         });
-    </script>
+    });
+</script>
 </body>
 </html>

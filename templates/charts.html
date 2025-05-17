@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>Графіки</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 
-    <!-- Tom Select -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 
-    <!-- Передаємо дані з Flask -->
     <script>
         window.presetForm = "{{ preset_form or '' }}";
         window.presetInn = "{{ preset_inn or '' }}";
@@ -17,79 +16,75 @@
         window.presetAtc = "{{ preset_atc or '' }}";
     </script>
 
-    <!-- Ініціалізація селекторів та автопідстановка -->
     <script src="{{ url_for('static', filename='js/chart_filters.js') }}"></script>
-
-    <!-- Основна побудова графіка -->
     <script src="{{ url_for('static', filename='js/chart_display.js') }}"></script>
-
-    <style>
-        select {
-            width: 400px;
-        }
-    </style>
 </head>
 <body>
+<div class="main-container">
     <h2>Графіки</h2>
-    <button id="compareFormBtn" style="background-color:#0ea5e9;color:white;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;">Порівняти реєстри за формою випуску</button>
-    <button id="compareCountryBtn" style="background-color:#0ea5e9;color:white;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;">Порівняти реєстри за країнами</button>
-    <button id="compareAtcBtn" style="background-color:#0ea5e9;color:white;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;">Порівняти реєстри за ATC</button>
 
-    <br><br>
-    <div id="chartTypeWrapper">
-    <label for="chartType">Тип графіка:</label>
-    <select id="chartType">
-        <option value="bar">Стовпчастий</option>
-        <option value="pie">Круговий</option>
-        <option value="line">Лінійний</option>
-    </select>
+    <div class="chart-controls">
+        <button class="chart-button" id="compareFormBtn">Порівняти за формою випуску</button>
+        <button class="chart-button" id="compareCountryBtn">Порівняти за країнами</button>
+        <button class="chart-button" id="compareAtcBtn">Порівняти за ATC</button>
     </div>
- <br><br>
-  <div class="filter-group" id="formWrapper">
-    <label for="formSelect">Оберіть форми випуску:</label><br>
-    <select id="formSelect" multiple>
-        {% for form in forms %}
-            <option value="{{ form }}">{{ form }}</option>
-        {% endfor %}
-    </select>
-</div>
- <br><br>
-<div class="filter-group" id="innWrapper">
-    <label for="innSelect">Оберіть МНН:</label><br>
-    <select id="innSelect" multiple>
-        {% for inn in inns %}
-            <option value="{{ inn }}">{{ inn }}</option>
-        {% endfor %}
-    </select>
-</div>
- <br><br>
-<div class="filter-group" id="countryWrapper">
-    <label for="countrySelect">Оберіть країни виробника:</label><br>
-    <select id="countrySelect" multiple>
-        {% for country in countries %}
-            <option value="{{ country }}">{{ country }}</option>
-        {% endfor %}
-    </select>
-</div>
- <br><br>
-<div class="filter-group" id="atcWrapper">
-    <label for="atcGroupSelect">Оберіть ATC-групу (перші 4 символи):</label><br>
-    <select id="atcGroupSelect" multiple>
-        {% for a in atc_groups %}
-            <option value="{{ a }}">{{ a }}</option>
-        {% endfor %}
-    </select>
-</div>
-    <br><br
 
-    <br><br>
-    <br><br>
-    <div id="alertBox" style="display:none; padding:10px; background-color:#fde047; color:#000; border:1px solid #facc15; border-radius:6px; margin-bottom:15px;"></div>
-    <canvas id="releaseChart" width="800" height="400"></canvas>
-    <br>
+    <div id="chartTypeWrapper" class="form-box">
+        <label for="chartType">Тип графіка:</label>
+        <select id="chartType">
+            <option value="bar">Стовпчастий</option>
+            <option value="pie">Круговий</option>
+            <option value="line">Лінійний</option>
+        </select>
+    </div>
+
+    <div class="filter-section">
+        <div class="filter-group" id="formWrapper">
+            <label for="formSelect">Форма випуску:</label>
+            <select id="formSelect" multiple>
+                {% for form in forms %}
+                    <option value="{{ form }}">{{ form }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group" id="innWrapper">
+            <label for="innSelect">МНН:</label>
+            <select id="innSelect" multiple>
+                {% for inn in inns %}
+                    <option value="{{ inn }}">{{ inn }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group" id="countryWrapper">
+            <label for="countrySelect">Країна виробника:</label>
+            <select id="countrySelect" multiple>
+                {% for country in countries %}
+                    <option value="{{ country }}">{{ country }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group" id="atcWrapper">
+            <label for="atcGroupSelect">ATC-група:</label>
+            <select id="atcGroupSelect" multiple>
+                {% for a in atc_groups %}
+                    <option value="{{ a }}">{{ a }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div id="alertBox" style="display:none;" class="alert-box"></div>
+
+    <div class="chart-box">
+        <canvas id="releaseChart" width="800" height="400"></canvas>
+    </div>
+
     <button id="saveChartBtn">Завантажити графік (PNG)</button>
-
     <br><br>
-    <a href="{{ url_for('index') }}"><button>Повернутися до пошуку</button></a>
+    <a class="link-button" href="{{ url_for('index') }}">Повернутися до пошуку</a>
+</div>
 </body>
 </html>
