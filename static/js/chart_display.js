@@ -92,9 +92,13 @@ if (compare === "form" && type === "bar") {
     const formCounts = {};
     const labelsSet = new Set();
 
+    const selectedFormsSet = new Set(selectedForms);  // 🔹 обрані користувачем форми
+
     // Збір даних по Україні
     for (const [form, count] of Object.entries(ukraineRaw)) {
         const unified = unifyFormName(form, "ukraine");
+        if (selectedForms.length > 0 && !selectedFormsSet.has(unified)) continue;
+
         if (!formCounts[unified]) formCounts[unified] = { ua: 0, pl: 0 };
         formCounts[unified].ua += count;
         labelsSet.add(unified);
@@ -103,6 +107,8 @@ if (compare === "form" && type === "bar") {
     // Збір даних по Польщі
     for (const [form, count] of Object.entries(polandRaw)) {
         const unified = unifyFormName(form, "poland");
+        if (selectedForms.length > 0 && !selectedFormsSet.has(unified)) continue;
+
         if (!formCounts[unified]) formCounts[unified] = { ua: 0, pl: 0 };
         formCounts[unified].pl += count;
         labelsSet.add(unified);
@@ -137,6 +143,7 @@ if (compare === "form" && type === "bar") {
     });
     return;
 }
+
 
 
     // 🔹 Порівняння за країнами
@@ -227,14 +234,55 @@ if (compare === "atc" && type === "bar") {
     return;
 }
 
- if (selectedAtcGroups.length > 0 && !compare) {
+        // 🔹 Універсальна перевірка для pie/line
+    const isPieOrLine = type === "pie" || type === "line";
+    if (isPieOrLine) {
+    const exactlyOneForm = selectedForms.length === 1 && selectedCountries.length === 0 && selectedAtcGroups.length === 0;
+    const exactlyOneCountry = selectedCountries.length === 1 && selectedForms.length === 0 && selectedAtcGroups.length === 0;
+    const exactlyOneAtc = selectedAtcGroups.length === 1 && selectedForms.length === 0 && selectedCountries.length === 0;
+
+    if (!(exactlyOneForm || exactlyOneCountry || exactlyOneAtc)) {
+        showAlert("Щоб побудувати кругову або лінійну діаграму, оберіть рівно одну форму, або одну країну, або одну ATC-групу.");
+        return;
+    }
+
+    const labels = Object.keys(data);
+    const values = Object.values(data);
+
+    const label =
+        exactlyOneForm ? selectedForms[0] :
+        exactlyOneCountry ? selectedCountries[0] :
+        selectedAtcGroups[0];  // 👈 показуємо вибраний ATC-код
+
+    if (labels.length === 0) {
+        showAlert("Немає даних для побудови графіка за обраними фільтрами.");
+        return;
+    }
+
+    chartInstance = new Chart(ctx, {
+        type: type,
+        data: {
+            labels: labels,
+            datasets: [{
+                label: label,
+                data: values,
+                backgroundColor: labels.map((_, i) => getColor(i))
+            }]
+        },
+        options: getOptions(compare, false)
+    });
+    return;
+}
+
+// 🔹 ATC-графік (стовпчастий, без порівняння)
+if (!compare && type === "bar" && selectedAtcGroups.length > 0) {
     const labels = Object.keys(data);
     const values = Object.values(data);
 
     chartInstance = new Chart(ctx, {
         type: "bar",
         data: {
-            labels: labels,
+            labels,
             datasets: [{
                 label: "Кількість",
                 data: values,
@@ -245,45 +293,6 @@ if (compare === "atc" && type === "bar") {
     });
     return;
 }
-
-        // 🔹 Універсальна перевірка для pie/line
-    const isPieOrLine = type === "pie" || type === "line";
-    const exactlyOneForm = selectedForms.length === 1 && selectedCountries.length === 0 && selectedAtcGroups.length === 0;
-    const exactlyOneCountry = selectedCountries.length === 1 && selectedForms.length === 0 && selectedAtcGroups.length === 0;
-    const exactlyOneAtc = selectedAtcGroups.length === 1 && selectedForms.length === 0 && selectedCountries.length === 0;
-
-    if (isPieOrLine) {
-        if (!(exactlyOneForm || exactlyOneCountry || exactlyOneAtc)) {
-            showAlert("Щоб побудувати кругову або лінійну діаграму, оберіть рівно одну форму, або одну країну, або одну ATC-групу.");
-            return;
-        }
-
-        const labels = Object.keys(data);
-        const values = Object.values(data);
-        const label =
-            exactlyOneForm ? selectedForms[0] :
-            exactlyOneCountry ? selectedCountries[0] :
-            "Повні ATC-коди";
-
-        if (labels.length === 0) {
-            showAlert("Немає даних для побудови графіка за обраними фільтрами.");
-            return;
-        }
-
-        chartInstance = new Chart(ctx, {
-            type: type,
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: label,
-                    data: values,
-                    backgroundColor: labels.map((_, i) => getColor(i))
-                }]
-            },
-            options: getOptions(compare, false)
-        });
-        return;
-    }
 
     // 🔹 Стовпчикова діаграма за формами/країнами
     if (type === "bar") {
@@ -318,17 +327,27 @@ function getOptions(enableLegend = true, compareMode = null) {
         responsive: true,
         plugins: {
             tooltip: {
-                mode: 'index',
+                mode: 'nearest',
+                intersect: true,
                 callbacks: {
                     label: function (context) {
-                        if (compareMode === "form" || compareMode === "country" || compareMode === "atc") {
-                            const value = context.raw;
-                            return `${context.dataset.label}: ${value}`;
-                        }
-                        const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
                         const value = context.raw;
-                        const percent = ((value / total) * 100).toFixed(1);
-                        return `${context.dataset.label}: ${value} (${percent}%)`;
+
+                        // 🔹 Кілька datasets: форма випуску, країни тощо — відсоток по X
+                        if (context.chart.data.datasets.length > 1) {
+                            const dataIndex = context.dataIndex;
+                            const total = context.chart.data.datasets
+                                .map(ds => ds.data[dataIndex] || 0)
+                                .reduce((sum, val) => sum + val, 0);
+
+                            const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${context.dataset.label}: ${value} (${percent}%)`;
+                        }
+
+                        // 🔹 Один dataset — pie / line
+                        const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                        const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                        return `${context.label}: ${value} (${percent}%)`;
                     }
                 }
             },

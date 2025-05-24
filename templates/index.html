@@ -74,31 +74,49 @@
 
         {% if not guest %}
             <h3>Додаткові функції</h3>
-            <form id="saveForm" action="{{ url_for('save_results') }}" method="post" class="form-box">
+
+            <!-- Схована форма -->
+            <form id="saveForm" action="{{ url_for('save_results') }}" method="post" style="display: none;">
                 <input type="hidden" name="results" id="resultsInput">
-                <button type="submit">Зберегти результати</button>
             </form>
+
+            <!-- Кнопки в один ряд -->
             <div class="link-group">
+                <a href="#" onclick="document.getElementById('saveForm').submit()" class="link-button">Зберегти результати</a>
                 <a class="link-button" href="{{ url_for('charts') }}">Графіки</a>
                 <a class="link-button" href="{{ url_for('history') }}">Переглянути історію</a>
             </div>
         {% else %}
-            <button class="disabled" disabled>Зберегти результати (доступно після входу)</button>
+            <div class="link-group">
+                <button class="disabled" disabled>Зберегти результати (доступно після входу)</button>
+            </div>
         {% endif %}
     </div>
 </div>
 
+<!-- Стрілочка вниз -->
+<div class="scroll-icon" onclick="scrollToBottom()" aria-label="Прогорнути донизу"></div>
+
+<!-- JS -->
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 <script>
-    ["name", "form", "inn", "country", "atc"].forEach(id => {
+     ["name", "form", "inn", "country", "atc"].forEach(id => {
         new TomSelect(`#${id}`, {
             create: false,
             maxItems: 1,
             allowEmptyOption: true,
             openOnFocus: true,
-            maxOptions: 1000
+            maxOptions: 1000,
+            plugins: ['remove_button']  // замість clear_button
         });
     });
+    // Функція прокрутки в самий низ
+    function scrollToBottom() {
+        window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: 'smooth'
+        });
+    }
 </script>
 </body>
 </html>
